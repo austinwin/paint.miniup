@@ -359,3 +359,8 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
  #textMode{max-width:95px}
  #selectionActions #copySelectionBtn,#selectionActions #cutSelectionBtn{padding:4px 7px;min-height:32px}
 }
+
+/* Fit to viewport: floating windows overlay, so avoid hundreds of px of reserved gutters. */
+.canvas-center{padding:12px;box-sizing:border-box}
+#fontPack[hidden]{display:none!important}
+@media(max-width:620px){.canvas-center{padding:10px}}
