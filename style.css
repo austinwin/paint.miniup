@@ -230,3 +230,28 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
 #activeToolTrigger:hover,#activeToolTrigger:focus-visible{background:#eaf2ff;border-color:#7eabd9}
 #activeToolLabel{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media(max-width:650px){#activeToolTrigger{min-width:106px;min-height:32px;padding:4px 7px;gap:6px}}
+
+/* Paint.NET-inspired image tabs. Each tab represents a separate editable document. */
+.app{grid-template-rows:37px 36px 38px 42px minmax(0,1fr) 29px}
+.document-tabs{display:flex;align-items:stretch;min-width:0;background:#e5eaf3;border-bottom:1px solid #afbed2;overflow:hidden}
+.document-tab-list{display:flex;align-items:stretch;gap:3px;padding:4px 5px 0;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scroll-behavior:smooth}
+.document-tab{display:flex;align-items:center;flex:none;height:33px;max-width:230px;min-width:110px;border:1px solid #c4cfde;border-bottom-color:#aebbd0;border-radius:7px 7px 0 0;background:#f2f5fa;color:#50627b}
+.document-tab.active{background:#fff;border-color:#9faec5;border-bottom:1px solid #fff;color:#234a81;box-shadow:0 -1px 3px #273b4e10}
+.document-tab-main{display:flex;align-items:center;flex:1;min-width:0;gap:7px;border:0;background:transparent;padding:3px 3px 3px 9px;height:100%;text-align:left;white-space:nowrap;font-size:11.5px;cursor:pointer}
+.document-tab-main:focus-visible,.document-tab-close:focus-visible,.document-new-tab:focus-visible{outline:2px solid #2e7dd9;outline-offset:-3px}
+.document-tab-preview{height:23px;width:29px;flex:none;border:1px solid #ccd5e1;border-radius:2px;background:#fff;object-fit:contain}
+.document-tab-name{overflow:hidden;text-overflow:ellipsis;min-width:0;font-weight:560}
+.document-tab.active .document-tab-name{font-weight:700}
+.document-tab-dirty{width:7px;height:7px;flex:none;border-radius:50%;background:#d48b2e}
+.document-tab-close{border:0;background:transparent;color:#7c899b;border-radius:4px;font-size:15px;width:26px;height:28px;flex:none;margin:0 3px 0 1px;cursor:pointer;line-height:1}
+.document-tab-close:hover{background:#e6dce1;color:#ae3447}
+.document-new-tab{flex:none;align-self:center;height:29px;min-width:34px;border:1px solid #bfccdd;border-radius:5px;background:#fff;color:#315e97;font-weight:700;font-size:20px;line-height:1;margin:0 8px 0 5px;cursor:pointer}
+.document-new-tab:hover{background:#e8f2ff;border-color:#7eaad9}
+@media(max-width:620px){
+ .app{grid-template-rows:35px 34px 38px 40px minmax(0,1fr) 27px}
+ .document-tab{height:33px;min-width:100px;max-width:168px}
+ .document-tab-main{gap:5px;padding-left:6px}
+ .document-tab-preview{width:24px;height:21px}
+ .document-tab-name{font-size:11px}
+ .document-new-tab{margin-right:5px;min-width:32px}
+}
