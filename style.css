@@ -341,3 +341,21 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
 #airbrushDensity{width:65px;accent-color:#3173c4}
 #airbrushDensityValue{min-width:28px;font-variant-numeric:tabular-nums}
 @media(max-width:680px){#airbrushDensity{width:48px}}
+
+/* Contextual smart annotations: no extra permanent toolbar buttons. */
+#textMode{max-width:112px}
+#textLabelStyle,#textBorderStyle{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+#textLabelStyle[hidden],#textBorderStyle[hidden]{display:none!important}
+#textBackground{width:30px;height:27px;padding:2px;border:1px solid #b9c8d9;border-radius:4px;background:white}
+#textBorder{width:15px;height:15px;accent-color:#337fce}
+#selectionActions button{touch-action:manipulation}
+#selectionActions #copySelectionBtn,#selectionActions #cutSelectionBtn{
+ min-height:27px;border:1px solid #c5d1de;background:#fff;color:#2f537e;
+ border-radius:5px;font-size:11px;padding:3px 8px;cursor:pointer;
+}
+#selectionActions #copySelectionBtn:hover,#selectionActions #cutSelectionBtn:hover{background:#e9f2ff;border-color:#91b6e0}
+#shareBtn{white-space:nowrap}
+@media(max-width:620px){
+ #textMode{max-width:95px}
+ #selectionActions #copySelectionBtn,#selectionActions #cutSelectionBtn{padding:4px 7px;min-height:32px}
+}
