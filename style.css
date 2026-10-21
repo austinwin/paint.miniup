@@ -255,3 +255,22 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
  .document-tab-name{font-size:11px}
  .document-new-tab{margin-right:5px;min-width:32px}
 }
+
+/* Saved images: thumbnail and title form one touch-friendly open button. */
+.project{grid-template-columns:minmax(0,1fr) 28px;gap:5px;padding:4px}
+.project .openproj{
+ display:grid;grid-template-columns:57px minmax(0,1fr);gap:9px;align-items:center;
+ width:100%;min-width:0;min-height:58px;border:1px solid transparent;border-radius:5px;
+ background:transparent;text-align:left;padding:6px;cursor:pointer;touch-action:manipulation;
+}
+.project .openproj:hover,.project .openproj:focus-visible{background:#eaf3ff;border-color:#a6c5eb}
+.project .openproj:active{background:#dceafb}
+.project .project-details{display:flex;flex-direction:column;min-width:0;gap:3px}
+.project .project-name,.project .project-time{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.project .openproj[aria-busy="true"]{cursor:progress;opacity:.68}
+.project .openproj[aria-busy="true"] .project-time::after{content:" · Opening…"}
+.project .delproj{width:28px;height:38px;min-width:28px;justify-self:center;border-radius:4px}
+@media(max-width:620px){
+ .project .openproj{min-height:63px;gap:8px}
+ .project .delproj{height:40px}
+}
