@@ -540,7 +540,7 @@ function pointerDown(e){
      }
    }
    updateContextOptions();
-   if(st.transform)el.canvas.style.cursor=st.transform.mode==='move'?'grabbing':cursorForHandle(st.transform.mode,st.objects[st.selected]);
+   if(st.transform?.mode==='move')el.canvas.style.cursor='grabbing';else if(st.selected>=0&&st.transform?.mode!=='marquee')el.canvas.style.cursor=cursorForHandle(st.transform.mode,st.objects[st.selected]);
  }
  else if(st.tool==='erase'){st.selected=-1;st.marquee=null;st.draft={type:'eraser-stroke',points:[p],width:Math.max(1,st.width)};}
  else if(st.tool==='text'){
