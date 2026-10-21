@@ -211,3 +211,22 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
 #activeToolTrigger .toolname-chevron{display:none}
 #activeToolLabel{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media(max-width:650px){#activeToolTrigger{min-width:34px;width:34px;padding:5px}}
+
+/* A compact, recognizable tool dropdown in the existing light theme. */
+#activeToolTrigger{
+ display:inline-flex;align-items:center;justify-content:space-between;gap:8px;
+ flex:0 0 auto;width:auto;min-width:112px;min-height:32px;
+ margin:0;padding:4px 8px 4px 10px;border:1px solid #bfccdf;border-radius:6px;
+ background:linear-gradient(#fff,#f0f4fb);color:#354962;font:inherit;font-size:12px;
+ box-shadow:0 1px 2px #2637500d;white-space:nowrap;
+}
+#activeToolTrigger .tool-picker-title{font-weight:650;color:#52637a}
+#activeToolTrigger svg{width:20px;height:20px;flex:none;color:#2e6bb9}
+#activeToolTrigger .toolname-chevron{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:21px;height:24px;flex:none;margin:0 0 0 2px;padding-left:6px;
+ border-left:1px solid #d0d9e7;color:#5c6e86;font-size:15px;
+}
+#activeToolTrigger:hover,#activeToolTrigger:focus-visible{background:#eaf2ff;border-color:#7eabd9}
+#activeToolLabel{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:650px){#activeToolTrigger{min-width:106px;min-height:32px;padding:4px 7px;gap:6px}}
