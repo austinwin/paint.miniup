@@ -319,3 +319,20 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
  .titlebar .brandtext{display:none}
  .titlebar .menu{padding:0 7px;font-size:11.5px}
 }
+
+/* Advanced drawing controls stay in the contextual options strip. */
+#gradientSettings[hidden],#redactStrengthWrap[hidden],#lineModeWrap[hidden]{display:none!important}
+#brushOptions .advanced-option,#eraserOptions label,#highlighterOptions label,
+#redactOptions label,#fillOptions .advanced-option,#lineOptions .advanced-option{
+ display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:#526477;font-size:11px;
+}
+#brushOptions .advanced-option input[type=checkbox]{width:15px;height:15px;accent-color:#3173c4}
+#gradientEndColor{width:31px;height:26px;padding:2px;border:1px solid #bdc8d8;border-radius:4px;background:white}
+#redactStrength{width:72px}
+#cloneSourceStatus{min-width:95px}
+#cloneOptions button,.smallaction{touch-action:manipulation}
+@media(max-width:680px){
+ #brushOptions .advanced-option,#redactOptions label,#lineOptions .advanced-option{font-size:10px}
+ #brushOptions select,#lineMode,#fillType,#redactMode{max-width:105px}
+ #redactStrength{width:55px}
+}
