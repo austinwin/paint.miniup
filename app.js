@@ -492,6 +492,23 @@ function showText(x,y,existing){
  field.focus({preventScroll:true});paint()
 }
 function updateDraft(p,shift){if(!st.draft)return;if(st.draft.points){st.draft.points.push(p)}else{let a=st.draft,b={...p};if(shift&&(a.type==='rect'||a.type==='ellipse'||a.type==='shape')){let s=Math.max(Math.abs(b.x-a.x1),Math.abs(b.y-a.y1));b.x=a.x1+Math.sign(b.x-a.x1||1)*s;b.y=a.y1+Math.sign(b.y-a.y1||1)*s}if(shift&&(a.type==='arrow'||a.type==='line')){let ang=Math.atan2(b.y-a.y1,b.x-a.x1),snap=Math.round(ang/(Math.PI/4))*(Math.PI/4),length=Math.hypot(b.x-a.x1,b.y-a.y1);b.x=a.x1+length*Math.cos(snap);b.y=a.y1+length*Math.sin(snap)}a.x2=b.x;a.y2=b.y}}
+// Cursor feedback is specific to the transform handle, including object rotation.
+const rotateCursor='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M22 13a9 9 0 1 0-3 7" fill="none" stroke="#143c72" stroke-width="2.8" stroke-linecap="round"/><path d="m18 6 5 7 3-7" fill="#fff" stroke="#143c72" stroke-width="2" stroke-linejoin="round"/></svg>')+'") 14 14, crosshair';
+function cursorForHandle(handle,object){
+ if(handle==='rotate')return rotateCursor;
+ if(handle==='control')return 'move';
+ const angles={e:0,ne:-45,n:-90,nw:-135,w:180,sw:135,s:90,se:45};
+ const deg=(angles[handle]+(object?.rotation||0)*180/Math.PI+1800)%180;
+ return ['ew-resize','nwse-resize','ns-resize','nesw-resize'][Math.round(deg/45)%4];
+}
+function updateSelectCursor(e){
+ if(!st.base||st.tool!=='select'||st.dragging||e.pointerType==='touch')return;
+ const p=nearest(e),handle=selectedHandle(p);
+ if(handle){el.canvas.style.cursor=cursorForHandle(handle,st.objects[st.selected]);return}
+ if(st.marquee&&insideMarquee(p)){el.canvas.style.cursor='grab';return}
+ const hit=findObject(p.x,p.y);
+ el.canvas.style.cursor=hit>=0&&(st.selectionShape==='smart'||(hit===st.selected&&st.objects[hit]?.type==='patch'))?'grab':'crosshair';
+}
 function pointerDown(e){
  if(!st.base||e.button!==0)return;
  if(el.text.style.display!=='none')finishText(true);
@@ -523,6 +540,7 @@ function pointerDown(e){
      }
    }
    updateContextOptions();
+   if(st.transform)el.canvas.style.cursor=st.transform.mode==='move'?'grabbing':cursorForHandle(st.transform.mode,st.objects[st.selected]);
  }
  else if(st.tool==='erase'){st.selected=-1;st.marquee=null;st.draft={type:'eraser-stroke',points:[p],width:Math.max(1,st.width)};}
  else if(st.tool==='text'){
@@ -534,7 +552,7 @@ function pointerDown(e){
  try{el.canvas.setPointerCapture(e.pointerId)}catch(_){}paint();
 }
 function pointerMove(e){
- if(!st.dragging||!st.base)return;
+ if(!st.dragging||!st.base){updateSelectCursor(e);return;}
  const p=nearest(e),dx=p.x-st.pointer.x,dy=p.y-st.pointer.y;
  if(st.tool==='pan'&&st.panning){el.work.scrollLeft=st.panning.left+st.panning.x-e.clientX;el.work.scrollTop=st.panning.top+st.panning.y-e.clientY;return}
  if(st.tool==='select'&&st.transform?.mode==='marquee'&&st.marquee){st.marquee.x2=p.x;st.marquee.y2=p.y;if(st.marquee.kind==='lasso'){const points=st.marquee.points,last=points[points.length-1];if(!last||Math.hypot(p.x-last.x,p.y-last.y)>=1.5)points.push(p)}}
@@ -558,7 +576,7 @@ function pointerUp(e){
   if(st.transform?.mode==='marquee'){const r=marqueeBounds();if(!r||r.w<4||r.h<4||(st.marquee?.kind==='lasso'&&st.marquee.points.length<3))st.marquee=null;else toast('Area selected. Drag to move or tap Delete.');updateContextOptions()}
   else if(st.moving)snapshot();
   else if(st.transform?.mode==='move'&&st.objects[st.selected]?.type==='patch'){snapshot()}
-  st.transform=null;
+  st.transform=null;updateSelectCursor(e);
  }
  if(st.draft&&!(st.tool==='shape'&&st.shapeKind==='custom')){const o=st.draft;st.draft=null;const valid=o.points?o.points.length>=1:Math.hypot(o.x2-o.x1,o.y2-o.y1)>=2;if(valid){if(o.type==='curve')o.control={x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};st.objects.push(o);snapshot();if(o.type==='curve'){setTool('select');st.selected=st.objects.length-1;updateContextOptions();toast('Drag the purple handle to bend the curve')}}}
  if(st.crop){const b=rectFor(st.crop);if(b.w<5||b.h<5)st.crop=null}paint();
@@ -678,7 +696,52 @@ function finishMiddlePan(){if(!middlePan)return;middlePan=null;document.body.cla
 function moveMiddlePan(e){if(!middlePan)return;el.work.scrollLeft=middlePan.left+middlePan.x-e.clientX;el.work.scrollTop=middlePan.top+middlePan.y-e.clientY}
 function endMiddlePan(e){if(e.button===1||e.type==='pointercancel')finishMiddlePan()}
 el.work.addEventListener('pointerdown',e=>{if(e.button!==1)return;e.preventDefault();e.stopPropagation();middlePan={x:e.clientX,y:e.clientY,left:el.work.scrollLeft,top:el.work.scrollTop};document.body.classList.add('is-middle-panning');window.addEventListener('pointermove',moveMiddlePan);window.addEventListener('pointerup',endMiddlePan);window.addEventListener('pointercancel',endMiddlePan)},true);
-el.work.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault()});el.canvas.addEventListener('pointerdown',pointerDown);el.canvas.addEventListener('pointermove',pointerMove);el.canvas.addEventListener('pointerup',pointerUp);el.canvas.addEventListener('pointercancel',pointerUp);
+el.work.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault()});
+// Pan: single-finger drag, two-finger pinch/pan, with zoom anchored at the gesture midpoint.
+const panTouches=new Map();let pinchState=null;
+function touchMidpoint(){
+ const [a,b]=[...panTouches.values()];
+ return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};
+}
+el.canvas.addEventListener('pointerdown',e=>{
+ if(!st.base||st.tool!=='pan'||e.pointerType!=='touch')return;
+ panTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(panTouches.size>=2){
+  st.dragging=false;st.panning=null;pinchState=touchMidpoint();
+  e.preventDefault();e.stopImmediatePropagation();
+  try{el.canvas.setPointerCapture(e.pointerId)}catch(_){}
+ }
+},true);
+el.canvas.addEventListener('pointermove',e=>{
+ if(!panTouches.has(e.pointerId))return;
+ panTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(panTouches.size>=2){
+  e.preventDefault();e.stopImmediatePropagation();
+  const next=touchMidpoint();
+  if(pinchState){
+   zoomAt(Math.max(.5,Math.min(2,next.distance/pinchState.distance)),next.x,next.y);
+   el.work.scrollLeft-=next.x-pinchState.x;
+   el.work.scrollTop-=next.y-pinchState.y;
+  }
+  pinchState=next;
+ }
+},true);
+function endPanTouch(e){
+ if(!panTouches.has(e.pointerId))return;
+ const wasPinching=panTouches.size>=2||!!pinchState;
+ panTouches.delete(e.pointerId);
+ if(panTouches.size===1){
+  const point=[...panTouches.values()][0];
+  st.dragging=true;
+  st.panning={x:point.x,y:point.y,left:el.work.scrollLeft,top:el.work.scrollTop};
+ }else if(!panTouches.size){st.panning=null;st.dragging=false}
+ pinchState=null;
+ if(wasPinching){e.preventDefault();e.stopImmediatePropagation();el.canvas.style.cursor='grab'}
+}
+el.canvas.addEventListener('pointerup',endPanTouch,true);
+el.canvas.addEventListener('pointercancel',endPanTouch,true);
+el.canvas.addEventListener('pointerdown',pointerDown);el.canvas.addEventListener('pointermove',pointerMove);el.canvas.addEventListener('pointerup',pointerUp);el.canvas.addEventListener('pointercancel',pointerUp);
+el.canvas.addEventListener('pointerleave',()=>{if(st.tool==='select'&&!st.dragging)el.canvas.style.cursor='crosshair'});
 el.canvas.addEventListener('dblclick',e=>{if(st.tool==='shape'&&st.shapeKind==='custom'){e.preventDefault();if(st.polygonDraft?.points.length>3)st.polygonDraft.points.pop();finishPolygon();return}if(!st.base||st.tool!=='select')return;const p=nearest(e),i=findObject(p.x,p.y);if(i>=0&&st.objects[i].type==='text'){st.fontSize=st.objects[i].fontSize;$('#fontSize').value=st.fontSize;setColor(st.objects[i].color);showText(p.x,p.y,i)}});
 // Clicking outside commits text, but changing font or color keeps the editor open.
 el.text.addEventListener('blur',e=>{
