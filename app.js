@@ -433,7 +433,114 @@ function drawGradient(g,o){
  gradient.addColorStop(1,o.endColor||'#ffffff');
  g.save();g.fillStyle=gradient;g.fillRect(0,0,st.base.width,st.base.height);g.restore();
 }
-function drawObject(g,o){g.save();if(o.cutouts?.length){g.beginPath();g.rect(0,0,st.base.width,st.base.height);for(const area of o.cutouts)g.rect(area.x,area.y,area.w,area.h);g.clip('evenodd')}if(o.rotation){let ctr=objectCenter(o);g.translate(ctr.x,ctr.y);g.rotate(o.rotation);g.translate(-ctr.x,-ctr.y)}let c=o.color||'#e23535';g.lineWidth=o.width||4;g.strokeStyle=c;g.fillStyle=c;g.lineCap='round';g.lineJoin='round';if(o.type==='patch'||o.type==='erase-region'||o.type==='fill-region'){const image=patchImage(o.src);if(o.type==='erase-region')g.globalCompositeOperation='destination-out';if(image&&(image instanceof HTMLCanvasElement||(image.complete&&image.naturalWidth)))g.drawImage(image,Math.min(o.x1,o.x2),Math.min(o.y1,o.y2),Math.abs(o.x2-o.x1),Math.abs(o.y2-o.y1));else if(o.type==='erase-region'&&!o.src){let b=rectFor(o);g.fillRect(b.x,b.y,b.w,b.h)}}else if(o.type==='eraser-stroke'&&o.mode==='soft'){drawSoftEraser(g,o)}else if(o.type==='eraser-stroke'){g.globalCompositeOperation='destination-out';g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=o.width||20;g.beginPath();const pts=o.points||[];if(pts.length){g.moveTo(pts[0].x,pts[0].y);for(const pt of pts.slice(1))g.lineTo(pt.x,pt.y);if(pts.length===1){g.arc(pts[0].x,pts[0].y,g.lineWidth/2,0,Math.PI*2);g.fill()}else g.stroke()}}else if(o.type==='brush-stroke'){drawPaintbrush(g,o)}else if(o.type==='airbrush-stroke'){drawAirbrush(g,o)}else if(o.type==='gradient'){drawGradient(g,o)}else if(o.type==='pencilpath'&&o.pixelMode){drawPencilPixels(g,o.points)}else if(o.type==='path'||o.type==='pencilpath'||o.type==='highlight'||o.type==='polyline'){if(o.points.length){if(o.type==='highlight'){g.globalAlpha=Math.max(.01,Math.min(1,(o.opacity??28)/100));g.lineWidth=Math.max(12,o.width*5)}g.beginPath();g.moveTo(o.points[0].x,o.points[0].y);for(const p of o.points.slice(1))g.lineTo(p.x,p.y);if(o.points.length===1){g.lineTo(o.points[0].x+.01,o.points[0].y+.01)}g.stroke()}}else if(o.type==='text'){g.font=`${o.bold?'bold ':''}${o.fontSize}px ${o.fontFamily||'Arial'}, sans-serif`;g.textBaseline='top';g.fillStyle=c;o.text.split('\n').forEach((line,i)=>g.fillText(line,o.x,o.y+i*o.fontSize*1.3))}else{let b=o.type==='polygon'?getBounds(o):rectFor(o);if(o.type==='icon'){drawIconObject(g,o)}else if(o.type==='redact'){g.fillStyle='#131313';g.fillRect(b.x,b.y,b.w,b.h)}else if(o.type==='rect'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.rect(b.x,b.y,b.w,b.h);fillShapePattern(g,o,b);g.stroke()}else if(o.type==='shape'||o.type==='polygon'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);drawShapePath(g,o);fillShapePattern(g,o,b);g.stroke()}else if(o.type==='ellipse'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.ellipse(b.x+b.w/2,b.y+b.h/2,Math.max(.1,b.w/2),Math.max(.1,b.h/2),0,0,Math.PI*2);fillShapePattern(g,o,b);g.stroke()}else if(['arrow','line','curve'].includes(o.type)){const cp=o.control||{x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.moveTo(o.x1,o.y1);if(o.type==='curve')g.quadraticCurveTo(cp.x,cp.y,o.x2,o.y2);else g.lineTo(o.x2,o.y2);g.stroke();g.setLineDash([]);const h1=o.startHead||'none',h2=o.endHead||(o.type==='arrow'?'arrow':'none');drawLineHead(g,o.x1,o.y1,o.type==='curve'?Math.atan2(o.y1-cp.y,o.x1-cp.x):Math.atan2(o.y1-o.y2,o.x1-o.x2),h1,o.width);drawLineHead(g,o.x2,o.y2,o.type==='curve'?Math.atan2(o.y2-cp.y,o.x2-cp.x):Math.atan2(o.y2-o.y1,o.x2-o.x1),h2,o.width)}}g.restore()}
+// Rasterize only a stroke's bounds so selection clipping doesn't allocate whole-image layers.
+function operationBounds(o,width=0){
+ if(o.type==='gradient')return{x:0,y:0,w:st.base.width,h:st.base.height};
+ const b=getBounds(o),pad=Math.max(4,Number(width||o.width||2)*2+3);
+ const x=Math.max(0,Math.floor(b.x-pad)),y=Math.max(0,Math.floor(b.y-pad));
+ return{x,y,w:Math.max(0,Math.min(st.base.width,Math.ceil(b.x+b.w+pad))-x),
+ h:Math.max(0,Math.min(st.base.height,Math.ceil(b.y+b.h+pad))-y)};
+}
+function boundedCanvas(bounds){
+ const out=document.createElement('canvas');out.width=bounds.w;out.height=bounds.h;
+ return out;
+}
+function eraseMaskStroke(g,o,left,top){
+ const pts=o.points||[];if(!pts.length)return;
+ g.save();g.translate(-left,-top);
+ g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=Math.max(1,o.width||20);
+ g.lineCap='round';g.lineJoin='round';
+ if(o.mode==='soft'){
+  const tip=getBrushTip(g.lineWidth,'#000000',0),half=tip.width/2,spacing=Math.max(1,g.lineWidth*.12);
+  let prev=pts[0];g.drawImage(tip,prev.x-half,prev.y-half);
+  for(const p of pts.slice(1)){
+   const n=Math.min(900,Math.ceil(Math.hypot(p.x-prev.x,p.y-prev.y)/spacing));
+   for(let i=1;i<=n;i++){const t=i/n;g.drawImage(tip,prev.x+(p.x-prev.x)*t-half,prev.y+(p.y-prev.y)*t-half)}
+   prev=p;
+  }
+ }else{
+  g.beginPath();g.moveTo(pts[0].x,pts[0].y);
+  for(const point of pts.slice(1))g.lineTo(point.x,point.y);
+  g.stroke();
+  if(pts.length===1){g.beginPath();g.arc(pts[0].x,pts[0].y,g.lineWidth/2,0,Math.PI*2);g.fill()}
+ }
+ g.restore();
+}
+function maskCanvasToSelection(canvas,bounds,selected){
+ if(!selected)return true;
+ if(selected.w!==st.base.width||selected.h!==st.base.height)return false;
+ const g=canvas.getContext('2d',{willReadFrequently:true});
+ const pixels=g.getImageData(0,0,bounds.w,bounds.h);
+ const {mask,w}=selected;
+ let present=false;
+ for(let y=0;y<bounds.h;y++){
+  const line=(bounds.y+y)*w+bounds.x;
+  for(let x=0;x<bounds.w;x++){
+   const k=(y*bounds.w+x)*4+3;
+   if(!mask[line+x])pixels.data[k]=0;
+   else if(pixels.data[k])present=true;
+  }
+ }
+ if(present)g.putImageData(pixels,0,0);
+ return present;
+}
+function patchFromCanvas(canvas,bounds,erasing=false){
+ const src=canvas.toDataURL('image/png');patchImages.set(src,canvas);
+ return{type:erasing?'erase-region':'patch',src,
+  x1:bounds.x,y1:bounds.y,x2:bounds.x+bounds.w,y2:bounds.y+bounds.h,width:1,rotation:0};
+}
+function clipStrokeToSelection(o,selection){
+ const bounds=operationBounds(o);
+ if(!bounds.w||!bounds.h||bounds.w*bounds.h>12000000){
+  toast('Selected stroke is too large. Zoom in or reduce the selection.');return null;
+ }
+ const layer=boundedCanvas(bounds),g=layer.getContext('2d');
+ if(o.type==='eraser-stroke')eraseMaskStroke(g,o,bounds.x,bounds.y);
+ else{g.translate(-bounds.x,-bounds.y);drawObject(g,o)}
+ if(!maskCanvasToSelection(layer,bounds,selection))return null;
+ return patchFromCanvas(layer,bounds,o.type==='eraser-stroke');
+}
+function makeClonePatch(o,source,anchor){
+ if(!source||!anchor||!o.points?.length)return null;
+ const bounds=operationBounds(o);
+ if(!bounds.w||!bounds.h||bounds.w*bounds.h>12000000){
+  toast('Clone stroke too large. Work on a smaller area.');return null;
+ }
+ const layer=boundedCanvas(bounds),g=layer.getContext('2d');
+ const first=o.points[0];
+ const shiftX=anchor.x-first.x,shiftY=anchor.y-first.y;
+ g.drawImage(source,shiftX-bounds.x,shiftY-bounds.y);
+ g.globalCompositeOperation='destination-in';
+ g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=o.width||12;
+ g.lineCap='round';g.lineJoin='round';
+ g.beginPath();g.moveTo(first.x-bounds.x,first.y-bounds.y);
+ for(const p of o.points.slice(1))g.lineTo(p.x-bounds.x,p.y-bounds.y);
+ g.stroke();
+ if(o.points.length===1){g.beginPath();g.arc(first.x-bounds.x,first.y-bounds.y,g.lineWidth/2,0,Math.PI*2);g.fill()}
+ g.globalCompositeOperation='source-over';
+ if(!maskCanvasToSelection(layer,bounds,st.paintSelection))return null;
+ return patchFromCanvas(layer,bounds);
+}
+function makePrivacyPatch(o){
+ const b=rectFor(o),x=Math.max(0,Math.floor(b.x)),y=Math.max(0,Math.floor(b.y));
+ const w=Math.max(0,Math.min(st.base.width,Math.ceil(b.x+b.w))-x);
+ const h=Math.max(0,Math.min(st.base.height,Math.ceil(b.y+b.h))-y);
+ if(w<2||h<2||w*h>12000000)return null;
+ const bounds={x,y,w,h},layer=boundedCanvas(bounds),g=layer.getContext('2d');
+ const source=composite(),strength=Math.max(2,Math.min(30,o.strength||12));
+ if(o.mode==='blur'){
+  g.save();g.beginPath();g.rect(0,0,w,h);g.clip();
+  g.filter='blur('+strength+'px)';
+  g.drawImage(source,-x,-y);g.restore();
+ }else{
+  const mini=document.createElement('canvas');mini.width=Math.max(1,Math.ceil(w/strength));mini.height=Math.max(1,Math.ceil(h/strength));
+  mini.getContext('2d').drawImage(source,x,y,w,h,0,0,mini.width,mini.height);
+  g.imageSmoothingEnabled=false;g.drawImage(mini,0,0,w,h);
+ }
+ if(!maskCanvasToSelection(layer,bounds,st.paintSelection))return null;
+ return patchFromCanvas(layer,bounds);
+}
+function drawObject(g,o){g.save();if(o.cutouts?.length){g.beginPath();g.rect(0,0,st.base.width,st.base.height);for(const area of o.cutouts)g.rect(area.x,area.y,area.w,area.h);g.clip('evenodd')}if(o.rotation){let ctr=objectCenter(o);g.translate(ctr.x,ctr.y);g.rotate(o.rotation);g.translate(-ctr.x,-ctr.y)}let c=o.color||'#e23535';g.lineWidth=o.width||4;g.strokeStyle=c;g.fillStyle=c;g.lineCap='round';g.lineJoin='round';if(o.type==='patch'||o.type==='erase-region'||o.type==='fill-region'){const image=patchImage(o.src);if(o.type==='erase-region')g.globalCompositeOperation='destination-out';if(image&&(image instanceof HTMLCanvasElement||(image.complete&&image.naturalWidth)))g.drawImage(image,Math.min(o.x1,o.x2),Math.min(o.y1,o.y2),Math.abs(o.x2-o.x1),Math.abs(o.y2-o.y1));else if(o.type==='erase-region'&&!o.src){let b=rectFor(o);g.fillRect(b.x,b.y,b.w,b.h)}}else if(o.type==='eraser-stroke'&&o.mode==='soft'){drawSoftEraser(g,o)}else if(o.type==='eraser-stroke'){g.globalCompositeOperation='destination-out';g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=o.width||20;g.beginPath();const pts=o.points||[];if(pts.length){g.moveTo(pts[0].x,pts[0].y);for(const pt of pts.slice(1))g.lineTo(pt.x,pt.y);if(pts.length===1){g.arc(pts[0].x,pts[0].y,g.lineWidth/2,0,Math.PI*2);g.fill()}else g.stroke()}}else if(o.type==='brush-stroke'){drawPaintbrush(g,o)}else if(o.type==='airbrush-stroke'){drawAirbrush(g,o)}else if(o.type==='gradient'){drawGradient(g,o)}else if(o.type==='clone-preview'){g.save();g.globalAlpha=.3;g.strokeStyle='#358ad2';g.lineWidth=o.width||12;g.beginPath();g.moveTo(o.points[0].x,o.points[0].y);for(const p of o.points.slice(1))g.lineTo(p.x,p.y);g.stroke();g.restore()}else if(o.type==='pencilpath'&&o.pixelMode){drawPencilPixels(g,o.points)}else if(o.type==='path'||o.type==='pencilpath'||o.type==='highlight'||o.type==='polyline'){if(o.points.length){if(o.type==='highlight'){g.globalAlpha=Math.max(.01,Math.min(1,(o.opacity??28)/100));g.lineWidth=Math.max(12,o.width*5)}g.beginPath();g.moveTo(o.points[0].x,o.points[0].y);for(const p of o.points.slice(1))g.lineTo(p.x,p.y);if(o.points.length===1){g.lineTo(o.points[0].x+.01,o.points[0].y+.01)}g.stroke()}}else if(o.type==='text'){g.font=`${o.bold?'bold ':''}${o.fontSize}px ${o.fontFamily||'Arial'}, sans-serif`;g.textBaseline='top';g.fillStyle=c;o.text.split('\n').forEach((line,i)=>g.fillText(line,o.x,o.y+i*o.fontSize*1.3))}else{let b=o.type==='polygon'?getBounds(o):rectFor(o);if(o.type==='icon'){drawIconObject(g,o)}else if(o.type==='redact'){g.fillStyle='#131313';g.fillRect(b.x,b.y,b.w,b.h)}else if(o.type==='rect'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.rect(b.x,b.y,b.w,b.h);fillShapePattern(g,o,b);g.stroke()}else if(o.type==='shape'||o.type==='polygon'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);drawShapePath(g,o);fillShapePattern(g,o,b);g.stroke()}else if(o.type==='ellipse'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.ellipse(b.x+b.w/2,b.y+b.h/2,Math.max(.1,b.w/2),Math.max(.1,b.h/2),0,0,Math.PI*2);fillShapePattern(g,o,b);g.stroke()}else if(['arrow','line','curve'].includes(o.type)){const cp=o.control||{x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.moveTo(o.x1,o.y1);if(o.type==='curve')g.quadraticCurveTo(cp.x,cp.y,o.x2,o.y2);else g.lineTo(o.x2,o.y2);g.stroke();g.setLineDash([]);const h1=o.startHead||'none',h2=o.endHead||(o.type==='arrow'?'arrow':'none');drawLineHead(g,o.x1,o.y1,o.type==='curve'?Math.atan2(o.y1-cp.y,o.x1-cp.x):Math.atan2(o.y1-o.y2,o.x1-o.x2),h1,o.width);drawLineHead(g,o.x2,o.y2,o.type==='curve'?Math.atan2(o.y2-cp.y,o.x2-cp.x):Math.atan2(o.y2-o.y1,o.x2-o.x1),h2,o.width)}}g.restore()}
 function drawLineHead(g,x,y,a,mode,width){if(!mode||mode==='none')return;const len=Math.max(13,width*4),spread=.55;g.beginPath();if(mode==='circle'){g.arc(x,y,Math.max(4,width*1.7),0,Math.PI*2);g.fill();return}g.moveTo(x-len*Math.cos(a-spread),y-len*Math.sin(a-spread));g.lineTo(x,y);g.lineTo(x-len*Math.cos(a+spread),y-len*Math.sin(a+spread));if(mode==='filled'){g.closePath();g.fill()}else g.stroke()}
 function renderSelection(){if(st.selected<0||!st.objects[st.selected])return;const o=st.objects[st.selected],b=getBounds(o),c=objectCenter(o),a=o.rotation||0;ctx.save();ctx.translate(c.x,c.y);ctx.rotate(a);ctx.translate(-c.x,-c.y);ctx.strokeStyle='#2375dc';ctx.lineWidth=1.25/st.zoom;ctx.setLineDash([5/st.zoom,4/st.zoom]);ctx.strokeRect(b.x-3/st.zoom,b.y-3/st.zoom,b.w+6/st.zoom,b.h+6/st.zoom);ctx.setLineDash([]);ctx.restore();const hs=handleLocations(o);ctx.save();hs.forEach(v=>{let sz=7/st.zoom;ctx.fillStyle=v.kind==='rotate'?'#0c9d85':v.kind==='control'?'#9457d7':'#ffffff';ctx.strokeStyle=v.kind==='control'?'#7036ad':'#2375dc';ctx.lineWidth=1.5/st.zoom;if(v.kind==='rotate'||v.kind==='control'){ctx.beginPath();ctx.arc(v.x,v.y,5.5/st.zoom,0,Math.PI*2);ctx.fill();ctx.stroke()}else{ctx.fillRect(v.x-sz/2,v.y-sz/2,sz,sz);ctx.strokeRect(v.x-sz/2,v.y-sz/2,sz,sz)}});ctx.restore()}
 
@@ -839,6 +946,7 @@ function pointerUp(e){
    if(o.type==='curve')o.control={x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};
    let finished=o;
    if(o.type==='clone-preview')finished=makeClonePatch(o,st.cloneBase,st.cloneSource);
+   else if(o.type==='redact'&&o.mode!=='solid')finished=makePrivacyPatch(o);
    else if(st.paintSelection)finished=clipStrokeToSelection(o,st.paintSelection);
    if(finished){st.objects.push(finished);snapshot()}
    if(o.type==='curve'&&finished===o){setTool('select');st.selected=st.objects.length-1;updateContextOptions();toast('Drag the purple handle to bend the curve')}
