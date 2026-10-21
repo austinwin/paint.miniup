@@ -852,7 +852,10 @@ $('#palette').innerHTML=colors.map(c=>`<button class="swatch ${c===st.color?'sel
 $('#palette').addEventListener('click',e=>{let b=e.target.closest('.swatch');if(b)setColor(b.dataset.color)});
 $$('.toolbutton').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 $('#openBtn').onclick=$('#emptyOpen').onclick=()=>el.file.click();$('#newBtn').onclick=$('#emptyBlank').onclick=()=>createBlank();
-el.file.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)readBlob(f,f.name);el.file.value='' });
+async function openImageFiles(files){
+ for(const file of files)if(file.type.startsWith('image/'))await readBlob(file,file.name);
+}
+el.file.addEventListener('change',e=>{const files=[...(e.target.files||[])];el.file.value='';if(files.length)openImageFiles(files)});
 $('#pasteBtn').onclick=pasteButton;$('#saveBtn').onclick=saveProject;$('#copyBtn').onclick=copyImage;
 $('#undoBtn').onclick=()=>restore(st.historyIdx-1);$('#redoBtn').onclick=()=>restore(st.historyIdx+1);
 $('#topColor').addEventListener('input',e=>setColor(e.target.value));
@@ -928,7 +931,7 @@ el.text.addEventListener('blur',e=>{
  },90);
 });
 document.addEventListener('paste',handlePaste);document.addEventListener('keydown',keyHandler);
-let dragCounter=0;document.addEventListener('dragenter',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();dragCounter++;$('#dropScreen').classList.add('show')}});document.addEventListener('dragover',e=>{if(e.dataTransfer?.types.includes('Files'))e.preventDefault()});document.addEventListener('dragleave',e=>{if(e.dataTransfer?.types.includes('Files')){dragCounter=Math.max(0,dragCounter-1);if(!dragCounter)$('#dropScreen').classList.remove('show')}});document.addEventListener('drop',e=>{e.preventDefault();dragCounter=0;$('#dropScreen').classList.remove('show');let f=[...(e.dataTransfer?.files||[])].find(x=>x.type.startsWith('image/'));if(f)readBlob(f,f.name)});
+let dragCounter=0;document.addEventListener('dragenter',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();dragCounter++;$('#dropScreen').classList.add('show')}});document.addEventListener('dragover',e=>{if(e.dataTransfer?.types.includes('Files'))e.preventDefault()});document.addEventListener('dragleave',e=>{if(e.dataTransfer?.types.includes('Files')){dragCounter=Math.max(0,dragCounter-1);if(!dragCounter)$('#dropScreen').classList.remove('show')}});document.addEventListener('drop',e=>{e.preventDefault();dragCounter=0;$('#dropScreen').classList.remove('show');const files=[...(e.dataTransfer?.files||[])].filter(x=>x.type.startsWith('image/'));if(files.length)openImageFiles(files)});
 window.addEventListener('resize',()=>{if(st.base&&st.zoom<=1.25)fitZoom()});
 updateUI();setHistoryButtons();
 
