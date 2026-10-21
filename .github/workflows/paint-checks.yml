@@ -1,0 +1,31 @@
+name: Paint checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  browser-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript unit and startup tests
+        run: node --test tests/startup.test.cjs tests/drawing-tools.test.cjs
+      - name: Install browser harness
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start static Paint server
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/paint-web.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/paint-web.log
+          exit 1
+      - name: Run real Chromium interaction tests
+        run: node tests/browser.test.cjs
