@@ -47,7 +47,7 @@ function context(){
 }
 
 test('contextual tools and controls exist without permanent tool duplication',()=>{
- for(const id of ['brushMode','brushSmoothing','brushPressure','eraserMode','highlighterOpacity',
+ for(const id of ['brushMode','brushSmoothing','brushPressure','airbrushDensity','eraserMode','highlighterOpacity',
    'lineMode','finishPolylineBtn','fillType','gradientMode','gradientEndColor',
    'redactMode','redactStrength','clonePickSource','objectForward','objectBackward']){
   assert.match(html,new RegExp('id="'+id+'"'));
