@@ -33,8 +33,19 @@
 <symbol id="i-curve" viewBox="0 0 24 24"><path d="M3 20C8 4 15 20 21 4" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="3" cy="20" r="1.8"/><circle cx="21" cy="4" r="1.8"/></symbol>
 <symbol id="i-hand" viewBox="0 0 24 24"><path d="M7 12V6a2 2 0 014 0v4-6a2 2 0 014 0v6-4a2 2 0 014 0v8a7 7 0 01-7 7h-2a6 6 0 01-5-3l-2-4c-1-2 2-4 4-2l2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
 </svg><div class="app">
-<header class="titlebar"><div class="brandicon"><svg><use href="#i-logo"/></svg></div><span class="brandtext">Paint</span><span class="docname" id="docTitle">Untitled canvas</span><span id="dirtyIndicator"></span><div class="topspacer"></div><span class="privacy">● Offline · Local</span></header>
-<nav class="menurow" aria-label="Main menu"><button class="menu" id="menuFile">File ▾</button><button class="menu" id="menuEdit">Edit ▾</button><button class="menu" id="menuView">View ▾</button><button class="menu" id="menuImage">Image ▾</button><button class="menu" id="menuWindows">Windows ▾</button></nav>
+<header class="titlebar">
+ <div class="brandicon" aria-hidden="true"><svg><use href="#i-logo"/></svg></div>
+ <span class="brandtext">Paint</span>
+ <nav class="menurow" aria-label="Main menu">
+  <button type="button" class="menu" id="menuFile">File ▾</button>
+  <button type="button" class="menu" id="menuEdit">Edit ▾</button>
+  <button type="button" class="menu" id="menuView">View ▾</button>
+  <button type="button" class="menu" id="menuImage">Image ▾</button>
+  <button type="button" class="menu" id="menuWindows">Windows ▾</button>
+ </nav>
+ <span class="docname" id="docTitle">Untitled canvas</span><span id="dirtyIndicator"></span>
+ <span class="topspacer"></span><span class="privacy">● Offline · Local</span>
+</header>
 <div class="actionbar" hidden aria-hidden="true">
  <button class="barbtn" id="newBtn" title="New blank canvas (Ctrl+N)"><svg><use href="#i-new"/></svg>New</button>
  <button class="barbtn" id="openBtn" title="Open an image from your computer (Ctrl+O)"><svg><use href="#i-upload"/></svg>Open image</button>
