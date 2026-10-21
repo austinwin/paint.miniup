@@ -350,7 +350,7 @@ function drawPaintbrush(g,o){
  if(!cached||cached.key!==key){
   const layer=document.createElement('canvas');layer.width=canUseLayer?w:1;layer.height=canUseLayer?h:1;
   const cg=canUseLayer?layer.getContext('2d'):g;
-  if(canUseLayer)cg.translate(-left,-top);
+  if(canUseLayer)cg.translate(-left,-top);else cg.globalAlpha*=opacity;
   // Spacing gives continuous, circular, smoothed brush marks.
   const spacing=Math.max(.6,width*.16);
   const stamp=p=>{
@@ -539,7 +539,7 @@ function makePrivacyPatch(o){
  if(w<2||h<2||w*h>12000000)return null;
  const bounds={x,y,w,h},layer=boundedCanvas(bounds),g=layer.getContext('2d');
  const source=composite(),strength=Math.max(2,Math.min(30,o.strength||12));
- if(o.mode==='blur'){
+ if(o.mode==='blur'&&typeof g.filter==='string'){
   g.save();g.beginPath();g.rect(0,0,w,h);g.clip();
   g.filter='blur('+strength+'px)';
   g.drawImage(source,-x,-y);g.restore();
@@ -1084,6 +1084,7 @@ for(const [id,key] of [['brushMode','brushMode'],['brushSmoothing','brushSmoothi
  $('#'+id).addEventListener('change',e=>{
   if(key==='lineMode'&&st.polylineDraft)finishPolyline();
   st[key]=key==='brushSmoothing'?Number(e.target.value):e.target.value;
+  if(key==='redactMode'&&st.redactMode!=='solid')toast('Blur and Pixelate are visual effects only. Use Solid + Export PNG for privacy.');
   updateContextOptions();paint();
  });
 }
