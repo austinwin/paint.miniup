@@ -748,10 +748,11 @@ function pointerDown(e){
   st.cloneSource={x:p.x,y:p.y};st.clonePicking=false;updateContextOptions();toast('Clone source set. Paint where you want to copy pixels.');return;
  }
  if(st.tool==='wand'){st.selected=-1;st.marquee=null;wandSelection(p.x,p.y,e.shiftKey);return}
- if(st.tool==='bucket'){st.selected=-1;st.marquee=null;fillBucket(p.x,p.y,e.shiftKey);return}
+ if(st.tool==='bucket'&&st.fillType==='solid'){st.selected=-1;fillBucket(p.x,p.y,e.shiftKey);return}
  if(st.tool==='picker'){sampleColor(p.x,p.y);return}
  if(st.tool==='shape'&&st.shapeKind==='custom'){if(!st.polygonDraft)st.polygonDraft={type:'polygon',points:[],fill:st.fillModeShape!=='outline',fillMode:st.fillModeShape,strokeStyle:st.shapeStrokeStyle,color:st.color,width:st.width};st.polygonDraft.points.push(p);st.draft={...st.polygonDraft,points:[...st.polygonDraft.points,p]};paint();return}
  st.pointer=p;st.dragging=true;st.moving=false;
+ st.paintSelection=(st.wand||st.marquee)?pixelSelectionMask():null;
  if(st.tool==='pan'){st.panning={x:e.clientX,y:e.clientY,left:el.work.scrollLeft,top:el.work.scrollTop};el.canvas.style.cursor='grabbing'}
  else if(st.tool==='select'){
    // A new selection gesture replaces any inverted or Magic Wand pixel mask.
@@ -777,13 +778,20 @@ function pointerDown(e){
    updateContextOptions();
    if(st.transform?.mode==='move')el.canvas.style.cursor='grabbing';else if(st.selected>=0&&st.transform?.mode!=='marquee')el.canvas.style.cursor=cursorForHandle(st.transform.mode,st.objects[st.selected]);
  }
- else if(st.tool==='erase'){st.selected=-1;st.marquee=null;st.draft={type:'eraser-stroke',points:[p],width:Math.max(1,st.width)};}
+ else if(st.tool==='erase'){st.selected=-1;st.draft={type:'eraser-stroke',points:[p],width:Math.max(1,st.width),mode:st.eraserMode};}
+ else if(st.tool==='bucket'&&st.fillType==='gradient'){
+  st.draft={type:'gradient',start:p,end:p,color:st.color,endColor:st.gradientEndColor,gradientMode:st.gradientMode};
+ }
+ else if(st.tool==='clone'){
+  if(!st.cloneSource){st.dragging=false;toast('Choose a clone source first (Set source or Alt-click).');return}
+  st.cloneBase=composite();st.draft={type:'clone-preview',points:[p],width:Math.max(2,st.width)};
+ }
  else if(st.tool==='text'){
    // Stop the canvas pointerdown default action from immediately blurring text input.
    e.preventDefault();st.dragging=false;showText(p.x,p.y);return
  }
  else if(st.tool==='crop'){st.crop={type:'crop',x1:p.x,y1:p.y,x2:p.x,y2:p.y}}
- else{st.selected=-1;st.marquee=null;st.draft=['pen','pencil','highlight'].includes(st.tool)?{type:st.tool==='pen'?'brush-stroke':st.tool==='pencil'?'pencilpath':'highlight',points:[p],color:st.color,width:st.tool==='pen'?st.brushSize:st.tool==='pencil'?1:st.width,...(st.tool==='pen'?{hardness:st.brushHardness,opacity:st.brushOpacity}:st.tool==='pencil'?{pixelMode:true}:{})}:{type:st.tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:st.color,width:st.width,fill:st.fillModeShape!=='outline',fillMode:['rect','ellipse','shape'].includes(st.tool)?st.fillModeShape:'outline',strokeStyle:['line','arrow','curve'].includes(st.tool)?st.lineStrokeStyle:st.shapeStrokeStyle,shapeKind:st.shapeKind,startHead:st.headSettings[st.tool]?.start||'none',endHead:st.headSettings[st.tool]?.end||'none'}}
+ else{st.selected=-1;st.draft=['pen','pencil','highlight'].includes(st.tool)?{type:st.tool==='pen'?(st.brushMode==='airbrush'?'airbrush-stroke':'brush-stroke'):st.tool==='pencil'?'pencilpath':'highlight',points:[{...p,pressure:st.brushPressure&&e.pointerType==='pen'?Math.max(.1,e.pressure||.5):1}],color:st.color,width:st.tool==='pen'?st.brushSize:st.tool==='pencil'?1:st.width,...(st.tool==='pen'?{hardness:st.brushHardness,opacity:st.brushOpacity,pressureEnabled:st.brushPressure,smoothing:st.brushSmoothing}:st.tool==='pencil'?{pixelMode:true}:{opacity:st.highlighterOpacity})}:{type:st.tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:st.color,width:st.width,fill:st.fillModeShape!=='outline',fillMode:['rect','ellipse','shape'].includes(st.tool)?st.fillModeShape:'outline',strokeStyle:['line','arrow','curve'].includes(st.tool)?st.lineStrokeStyle:st.shapeStrokeStyle,shapeKind:st.shapeKind,startHead:st.headSettings[st.tool]?.start||'none',endHead:st.headSettings[st.tool]?.end||'none'}}
  try{el.canvas.setPointerCapture(e.pointerId)}catch(_){}paint();
 }
 function pointerMove(e){
@@ -805,7 +813,13 @@ function pointerMove(e){
   st.objects[st.selected]=o;
  }
  else if(st.tool==='crop'&&st.crop){st.crop.x2=p.x;st.crop.y2=p.y}
- else if(st.draft){if(st.draft.type==='brush-stroke'||st.draft.type==='pencilpath'){const coalesced=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():null;for(const event of coalesced?.length?coalesced:[e]){const q=nearest(event),prev=st.draft.points[st.draft.points.length-1];if(!prev||Math.hypot(q.x-prev.x,q.y-prev.y)>=.5)st.draft.points.push(q)}}else updateDraft(p,e.shiftKey)}
+ else if(st.draft?.type==='gradient'){st.draft.end=p}
+ else if(st.draft){if(['brush-stroke','airbrush-stroke','pencilpath','clone-preview','eraser-stroke'].includes(st.draft.type)){const coalesced=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():null;for(const event of coalesced?.length?coalesced:[e]){const raw=nearest(event),prev=st.draft.points[st.draft.points.length-1];
+ const smoothing=st.draft.type==='brush-stroke'||st.draft.type==='airbrush-stroke'?Number(st.draft.smoothing)||0:0;
+ const alpha=smoothing?Math.max(.15,1-smoothing/100):1;
+ const pressure=st.draft.pressureEnabled&&event.pointerType==='pen'?Math.max(.1,event.pressure||.5):1;
+ const q=prev?{x:prev.x+(raw.x-prev.x)*alpha,y:prev.y+(raw.y-prev.y)*alpha,pressure}:{...raw,pressure};
+ if(!prev||Math.hypot(q.x-prev.x,q.y-prev.y)>=.5)st.draft.points.push(q)}}else updateDraft(p,e.shiftKey)}
  paint();
 }
 function pointerUp(e){
@@ -818,7 +832,19 @@ function pointerUp(e){
   else if(st.transform?.mode==='move'&&st.objects[st.selected]?.type==='patch'){snapshot()}
   st.transform=null;updateSelectCursor(e);
  }
- if(st.draft&&!(st.tool==='shape'&&st.shapeKind==='custom')){const o=st.draft;st.draft=null;const valid=o.points?o.points.length>=1:Math.hypot(o.x2-o.x1,o.y2-o.y1)>=2;if(valid){if(o.type==='curve')o.control={x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};st.objects.push(o);snapshot();if(o.type==='curve'){setTool('select');st.selected=st.objects.length-1;updateContextOptions();toast('Drag the purple handle to bend the curve')}}}
+ if(st.draft&&!(st.tool==='shape'&&st.shapeKind==='custom')){
+  const o=st.draft;st.draft=null;
+  const valid=o.type==='gradient'||o.points?.length>=1||Math.hypot((o.x2||0)-(o.x1||0),(o.y2||0)-(o.y1||0))>=2;
+  if(valid){
+   if(o.type==='curve')o.control={x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};
+   let finished=o;
+   if(o.type==='clone-preview')finished=makeClonePatch(o,st.cloneBase,st.cloneSource);
+   else if(st.paintSelection)finished=clipStrokeToSelection(o,st.paintSelection);
+   if(finished){st.objects.push(finished);snapshot()}
+   if(o.type==='curve'&&finished===o){setTool('select');st.selected=st.objects.length-1;updateContextOptions();toast('Drag the purple handle to bend the curve')}
+  }
+ }
+ st.paintSelection=null;st.cloneBase=null;
  if(st.crop){const b=rectFor(st.crop);if(b.w<5||b.h<5)st.crop=null}paint();
 }
 function finishPolyline(){
