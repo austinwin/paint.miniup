@@ -75,6 +75,39 @@ async function main(){
   await page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'y',ctrlKey:true,bubbles:true,cancelable:true})));
   assert.equal(await page.evaluate(()=>window.PaintDebug.state.historyIdx),count,'Redo works');
 
+  // In-app copy/paste must preserve editable vector annotations.
+  const copyResult=await page.evaluate(()=>{
+   const st=window.PaintDebug.state;
+   st.selected=st.objects.findIndex(x=>x.type==='arrow');
+   const before=st.objects.length;
+   document.querySelector('#copySelectionBtn').click();
+   document.querySelector('#menuEdit').click();
+   const paste=[...document.querySelectorAll('.menupopup button')].find(b=>b.textContent.includes('Paste Selection'));
+   if(!paste)throw Error('Paste Selection menu item missing');
+   paste.click();
+   return{before,after:st.objects.length,type:st.objects.at(-1)?.type};
+  });
+  assert.equal(copyResult.after,copyResult.before+1,'Pasting should add a new annotation');
+  assert.equal(copyResult.type,'arrow','Pasted object should remain an editable arrow');
+
+  // Two fingers should pinch with Paintbrush selected without creating an unwanted stroke.
+  const touchResult=await page.evaluate(()=>{
+   window.PaintDebug.setTool('pen');
+   const st=window.PaintDebug.state,canvas=document.querySelector('#canvas');
+   const rect=canvas.getBoundingClientRect(),beforeZoom=st.zoom,beforeCount=st.objects.length;
+   function fire(type,id,dx){
+    canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',
+     button:0,buttons:type==='pointerup'?0:1,pointerId:id,clientX:rect.left+dx,clientY:rect.top+30}));
+   }
+   fire('pointerdown',41,30);fire('pointerdown',42,80);
+   fire('pointermove',42,145);
+   const zoomAfterPinch=st.zoom;
+   fire('pointerup',42,145);fire('pointerup',41,30);
+   return{beforeZoom,zoomAfterPinch,beforeCount,afterCount:st.objects.length};
+  });
+  assert.ok(touchResult.zoomAfterPinch>touchResult.beforeZoom,'Pinch should zoom with Paintbrush selected');
+  assert.equal(touchResult.afterCount,touchResult.beforeCount,'Pinch must not leave an accidental stroke');
+
   // Share is handled by the browser when available, with a PNG File.
   await page.evaluate(()=>{
    navigator.canShare=()=>true;
