@@ -345,7 +345,51 @@ function liftMarquee(){
  st.objects.push({type:'patch',src,x1:r.x,y1:r.y,x2:r.x+r.w,y2:r.y+r.h,color:'#fff',width:1});
  st.selected=st.objects.length-1;st.marquee=null;updateContextOptions();return true;
 }
-function wandSelection(x,y){const source=composite(),w=source.width,h=source.height,n=w*h;if(n>12000000){toast('Magic Wand supports images up to 12 megapixels.');return}const rgba=source.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data,seed=(Math.floor(y)*w+Math.floor(x));const si=Math.max(0,Math.min(n-1,seed))*4,rr=rgba[si],gg=rgba[si+1],bb=rgba[si+2],aa=rgba[si+3],threshold=st.wandTolerance/100*255;const isMatch=i=>{const k=i*4;return Math.max(Math.abs(rgba[k]-rr),Math.abs(rgba[k+1]-gg),Math.abs(rgba[k+2]-bb),Math.abs(rgba[k+3]-aa))<=threshold};const mask=new Uint8Array(n);let count=0;if(st.wandMode==='global'){for(let i=0;i<n;i++){if(isMatch(i)){mask[i]=1;count++}}}else{const queue=new Int32Array(n);let front=0,back=0;queue[back++]=Math.max(0,Math.min(n-1,seed));mask[Math.max(0,Math.min(n-1,seed))]=1;while(front<back){const i=queue[front++];count++;const x=i%w,y=(i/w)|0;for(const pos of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(pos>=0&&!mask[pos]&&isMatch(pos)){mask[pos]=1;queue[back++]=pos}}}}if(!count){st.wand=null;paint();return}const overlay=document.createElement('canvas');overlay.width=w;overlay.height=h;const tg=overlay.getContext('2d'),idata=tg.createImageData(w,h);for(let i=0;i<n;i++){if(!mask[i])continue;const k=i*4,boundary=i%w===0||i%w===w-1||i<w||i>=n-w||!mask[i-1]||!mask[i+1]||!mask[i-w]||!mask[i+w];idata.data[k]=boundary?26:62;idata.data[k+1]=boundary?88:145;idata.data[k+2]=230;idata.data[k+3]=boundary?235:52}tg.putImageData(idata,0,0);st.wand={mask,overlay,count,w,h,x,y};updateContextOptions();paint();toast(`${count.toLocaleString()} pixels selected`)}
+// Convert pixel selections to binary masks, preserving rectangular, elliptical and lasso boundaries.
+function maskOverlay(mask,w,h){
+ const overlay=document.createElement('canvas');overlay.width=w;overlay.height=h;
+ const g=overlay.getContext('2d'),pixels=g.createImageData(w,h);
+ for(let i=0;i<mask.length;i++){
+  if(!mask[i])continue;
+  const x=i%w,y=(i/w)|0,k=i*4;
+  const edge=x===0||y===0||x===w-1||y===h-1||!mask[i-1]||!mask[i+1]||!mask[i-w]||!mask[i+w];
+  pixels.data[k]=edge?26:62;pixels.data[k+1]=edge?88:145;
+  pixels.data[k+2]=230;pixels.data[k+3]=edge?235:52;
+ }
+ g.putImageData(pixels,0,0);return overlay;
+}
+function pixelSelectionMask(){
+ if(!st.base)return null;
+ const w=st.base.width,h=st.base.height;
+ if(st.wand)return {w,h,mask:st.wand.mask.slice()};
+ if(!st.marquee)return null;
+ const mask=new Uint8Array(w*h),r=marqueeBounds();
+ if(!r||!r.w||!r.h)return null;
+ if(st.marquee.kind==='rect'){
+  for(let y=r.y;y<r.y+r.h;y++)mask.fill(1,y*w+r.x,y*w+r.x+r.w);
+ }else{
+  const shape=maskForMarquee(st.marquee,r);
+  const data=shape.getContext('2d',{willReadFrequently:true}).getImageData(0,0,r.w,r.h).data;
+  for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++){
+   if(data[(y*r.w+x)*4+3])mask[(y+r.y)*w+x+r.x]=1;
+  }
+ }
+ return {w,h,mask};
+}
+function invertSelection(){
+ if(!st.base){toast('Open an image first.');return false}
+ if(st.base.width*st.base.height>12000000){toast('Invert Selection supports up to 12 megapixels.');return false}
+ const data=pixelSelectionMask();
+ if(!data){toast('Select pixels using Rectangle, Ellipse, Lasso, or Magic Wand first.');return false}
+ const {w,h,mask}=data;let count=0;
+ for(let i=0;i<mask.length;i++){mask[i]=mask[i]?0:1;count+=mask[i]}
+ st.wand={mask,overlay:maskOverlay(mask,w,h),count,w,h,x:0,y:0,source:'inverted'};
+ st.marquee=null;st.selected=-1;st.transform=null;
+ updateContextOptions();paint();
+ toast(`Selection inverted · ${count.toLocaleString()} pixels selected`);
+ return true;
+}
+function wandSelection(x,y){const source=composite(),w=source.width,h=source.height,n=w*h;if(n>12000000){toast('Magic Wand supports images up to 12 megapixels.');return}const rgba=source.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data,seed=(Math.floor(y)*w+Math.floor(x));const si=Math.max(0,Math.min(n-1,seed))*4,rr=rgba[si],gg=rgba[si+1],bb=rgba[si+2],aa=rgba[si+3],threshold=st.wandTolerance/100*255;const isMatch=i=>{const k=i*4;return Math.max(Math.abs(rgba[k]-rr),Math.abs(rgba[k+1]-gg),Math.abs(rgba[k+2]-bb),Math.abs(rgba[k+3]-aa))<=threshold};const mask=new Uint8Array(n);let count=0;if(st.wandMode==='global'){for(let i=0;i<n;i++){if(isMatch(i)){mask[i]=1;count++}}}else{const queue=new Int32Array(n);let front=0,back=0;queue[back++]=Math.max(0,Math.min(n-1,seed));mask[Math.max(0,Math.min(n-1,seed))]=1;while(front<back){const i=queue[front++];count++;const x=i%w,y=(i/w)|0;for(const pos of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(pos>=0&&!mask[pos]&&isMatch(pos)){mask[pos]=1;queue[back++]=pos}}}}if(!count){st.wand=null;paint();return}const overlay=maskOverlay(mask,w,h);st.wand={mask,overlay,count,w,h,x,y,source:'wand'};updateContextOptions();paint();toast(`${count.toLocaleString()} pixels selected`)}
 // Both tools sample the visible result; the bucket changes only the raster base, so vector annotations stay editable.
 function sampleColor(x,y){if(!st.base)return;const pixel=composite().getContext('2d').getImageData(Math.min(st.base.width-1,Math.max(0,Math.floor(x))),Math.min(st.base.height-1,Math.max(0,Math.floor(y))),1,1).data;const hex='#'+[pixel[0],pixel[1],pixel[2]].map(n=>n.toString(16).padStart(2,'0')).join('');setColor(hex);toast('Sampled '+hex+' · choose Brush or Fill Bucket to use it')}
 function fillBucket(x,y,invertMode=false){
@@ -408,6 +452,7 @@ function deleteSelection(){
  return false;
 }
 // Render only the selected object or pixels into a transparent PNG.
+let internalSelection=null; // In-app fallback if the browser clipboard is unavailable.
 function selectedPixelsCanvas(){
  if(!st.base||!hasSelection())return null;
  let x=0,y=0,w=0,h=0,object=null;
@@ -456,13 +501,17 @@ function selectedPixelsCanvas(){
 async function copySelectedPixels(){
  const selected=selectedPixelsCanvas();
  if(!selected){toast('Select an area or object first.');return}
+ internalSelection=selected;
  try{
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw new Error('Clipboard write unavailable');
-  // Supply the blob promise immediately to preserve the user gesture in iOS Safari.
+  // Supply the PNG promise immediately to preserve user activation on mobile Safari.
   const png=new Promise((resolve,reject)=>selected.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG conversion failed')),'image/png'));
   await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);
-  toast('Selected area copied. Paste to insert as a movable object.');
- }catch(error){console.warn('Copy selection failed',error);toast('Clipboard permission required. Try HTTPS or export PNG.')}
+  toast('Selection copied. Use Paste Selection to insert it.');
+ }catch(error){
+  console.warn('System clipboard unavailable',error);
+  toast('Selection copied inside Paint. Use Paste Selection to insert it.');
+ }
 }
 function composite(){let output=document.createElement('canvas');output.width=st.base.width;output.height=st.base.height;const g=output.getContext('2d');g.drawImage(st.base,0,0);st.objects.forEach(o=>drawObject(g,o));return output}
 function paint(){if(!st.base)return;ctx.clearRect(0,0,st.base.width,st.base.height);ctx.drawImage(st.base,0,0);st.objects.forEach(o=>drawObject(ctx,o));if(st.draft)drawObject(ctx,st.draft);if(st.wand)ctx.drawImage(st.wand.overlay,0,0);renderSelection();paintMarquee();$('#selectionActions').hidden=!(st.wand||st.marquee||st.selected>=0);if(st.crop){let b=rectFor(st.crop);ctx.save();ctx.fillStyle='#10223d55';ctx.fillRect(0,0,st.base.width,st.base.height);ctx.clearRect(b.x,b.y,b.w,b.h);ctx.drawImage(st.base,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);ctx.save();ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();st.objects.forEach(o=>drawObject(ctx,o));ctx.restore();ctx.strokeStyle='#fff';ctx.lineWidth=2/st.zoom;ctx.setLineDash([8/st.zoom,5/st.zoom]);ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.restore()}updateUI()}
@@ -657,8 +706,25 @@ el.canvas.addEventListener('pointerenter',e=>{st.pastePointerInside=true;st.past
 el.canvas.addEventListener('pointermove',e=>{st.pastePointerInside=true;st.pastePointer=nearest(e)});
 el.canvas.addEventListener('pointerleave',()=>{st.pastePointerInside=false});
 async function pasteButton(){try{if(!navigator.clipboard?.read)throw new Error('no-read');const items=await navigator.clipboard.read();for(const item of items){const type=item.types.find(t=>t.startsWith('image/'));if(type){const blob=await item.getType(type);await pasteImageObject(blob);return}}toast('Clipboard contains no image.')}catch(e){toast('Use Ctrl / ⌘ + V to paste, or Open to choose a file.')}}
+async function pasteSelection(){
+ // Prefer the current OS clipboard; recover the last in-app copy if permission is denied.
+ if(navigator.clipboard?.read){
+  try{
+   const items=await navigator.clipboard.read();
+   for(const item of items){
+    const type=item.types.find(t=>t.startsWith('image/'));
+    if(type){await pasteImageObject(await item.getType(type));return}
+   }
+  }catch(err){console.warn('Clipboard read blocked; trying copied selection.',err)}
+ }
+ if(internalSelection){
+  const blob=await new Promise(resolve=>internalSelection.toBlob(resolve,'image/png'));
+  if(blob){await pasteImageObject(blob);return}
+ }
+ toast('No image to paste. Use Copy Selection or copy an image first.');
+}
 function handlePaste(e){if(document.activeElement?.matches('input,textarea,select,[contenteditable]'))return;const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();const file=item.getAsFile();if(file)pasteImageObject(file)}}
-function keyHandler(e){const tag=document.activeElement?.tagName,editing=el.text.style.display==='block';if(editing){if(e.isComposing||e.keyCode===229)return;if(e.key==='Escape'){e.preventDefault();finishText(false);paint()}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishText(true)}return}if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const cmd=e.ctrlKey||e.metaKey;if(cmd){const k=e.key.toLowerCase();if(k==='n'){e.preventDefault();createBlank()}if(k==='r'){e.preventDefault();showSizeDialog(e.shiftKey?'canvas':'resize')}if(k==='s'){e.preventDefault();saveProject()}if(k==='z'){e.preventDefault();restore(st.historyIdx+(e.shiftKey?1:-1))}if(k==='y'){e.preventDefault();restore(st.historyIdx+1)}if(k==='o'){e.preventDefault();el.file.click()}if(k==='c'){e.preventDefault();if(hasSelection())copySelectedPixels();else copyImage()}return}if(e.key==='Delete'||e.key==='Backspace'){if(hasSelection()){e.preventDefault();deleteSelection()}return}if(st.selected>=0&&st.objects[st.selected]&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const n=e.shiftKey?10:1;const dx=e.key==='ArrowLeft'?-n:e.key==='ArrowRight'?n:0;const dy=e.key==='ArrowUp'?-n:e.key==='ArrowDown'?n:0;moveObject(st.objects[st.selected],dx,dy);snapshot();paint();return}if(e.key==='Enter'&&st.polygonDraft){e.preventDefault();finishPolygon();return}if(e.key==='Escape'){popup.hidden=true;st.crop=null;st.draft=null;st.polygonDraft=null;st.selected=-1;st.wand=null;st.marquee=null;updateContextOptions();paint();return}const tool={v:'select',w:'wand',f:'bucket',k:'picker',z:'zoom',u:'curve',n:'pencil',p:'pen',h:'pan',a:'arrow',l:'line',r:'rect',o:'ellipse',t:'text',b:'redact',c:'crop',e:'erase',s:'shape'}[e.key.toLowerCase()];if(tool){e.preventDefault();setTool(tool)}}
+function keyHandler(e){const tag=document.activeElement?.tagName,editing=el.text.style.display==='block';if(editing){if(e.isComposing||e.keyCode===229)return;if(e.key==='Escape'){e.preventDefault();finishText(false);paint()}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishText(true)}return}if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const cmd=e.ctrlKey||e.metaKey;if(cmd){const k=e.key.toLowerCase();if(k==='n'){e.preventDefault();createBlank()}if(k==='r'){e.preventDefault();showSizeDialog(e.shiftKey?'canvas':'resize')}if(k==='s'){e.preventDefault();saveProject()}if(k==='z'){e.preventDefault();restore(st.historyIdx+(e.shiftKey?1:-1))}if(k==='y'){e.preventDefault();restore(st.historyIdx+1)}if(k==='o'){e.preventDefault();el.file.click()}if(k==='c'){e.preventDefault();if(hasSelection())copySelectedPixels();else copyImage()}if(k==='i'&&e.shiftKey){e.preventDefault();invertSelection()}return}if(e.key==='Delete'||e.key==='Backspace'){if(hasSelection()){e.preventDefault();deleteSelection()}return}if(st.selected>=0&&st.objects[st.selected]&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const n=e.shiftKey?10:1;const dx=e.key==='ArrowLeft'?-n:e.key==='ArrowRight'?n:0;const dy=e.key==='ArrowUp'?-n:e.key==='ArrowDown'?n:0;moveObject(st.objects[st.selected],dx,dy);snapshot();paint();return}if(e.key==='Enter'&&st.polygonDraft){e.preventDefault();finishPolygon();return}if(e.key==='Escape'){popup.hidden=true;st.crop=null;st.draft=null;st.polygonDraft=null;st.selected=-1;st.wand=null;st.marquee=null;updateContextOptions();paint();return}const tool={v:'select',w:'wand',f:'bucket',k:'picker',z:'zoom',u:'curve',n:'pencil',p:'pen',h:'pan',a:'arrow',l:'line',r:'rect',o:'ellipse',t:'text',b:'redact',c:'crop',e:'erase',s:'shape'}[e.key.toLowerCase()];if(tool){e.preventDefault();setTool(tool)}}
 // Contextual tool options. These are visible only when relevant.
 ['startHead','endHead'].forEach(id=>$('#'+id).addEventListener('change',e=>{if(st.headSettings[st.tool])st.headSettings[st.tool][id==='startHead'?'start':'end']=e.target.value;const o=st.objects[st.selected];if(o&&['line','arrow','curve'].includes(o.type)){o[id]=e.target.value;snapshot();paint()}}));
 $('#lineStyle').addEventListener('change',e=>{st.lineStrokeStyle=e.target.value;const o=st.objects[st.selected];if(o&&['line','arrow','curve'].includes(o.type)){o.strokeStyle=e.target.value;snapshot();paint()}});
@@ -666,8 +732,8 @@ $('#borderStyle').addEventListener('change',e=>{st.shapeStrokeStyle=e.target.val
 
 $('#fillTolerance').addEventListener('input',e=>{st.fillTolerance=Number(e.target.value);$('#fillToleranceValue').textContent=st.fillTolerance+'%'});
  $('#fillMode').addEventListener('change',e=>{st.fillMode=e.target.value});
- $('#wandTolerance').addEventListener('input',e=>{st.wandTolerance=Number(e.target.value);$('#wandToleranceValue').textContent=st.wandTolerance+'%';if(st.wand){let {x,y}=st.wand;wandSelection(x,y)}});
-$('#wandMode').addEventListener('change',e=>{st.wandMode=e.target.value;if(st.wand){let {x,y}=st.wand;wandSelection(x,y)}});
+ $('#wandTolerance').addEventListener('input',e=>{st.wandTolerance=Number(e.target.value);$('#wandToleranceValue').textContent=st.wandTolerance+'%';if(st.wand?.source==='wand'){let {x,y}=st.wand;wandSelection(x,y)}});
+$('#wandMode').addEventListener('change',e=>{st.wandMode=e.target.value;if(st.wand?.source==='wand'){let {x,y}=st.wand;wandSelection(x,y)}});
 $('#deleteSelectionBtn').onclick=deleteSelection;$('#deselectBtn').onclick=deselect;
 $('#selectionShape').addEventListener('change',e=>{st.selectionShape=e.target.value;deselect();updateContextOptions()});
 $('#objectRotation').addEventListener('change',e=>{let o=st.objects[st.selected];if(!o)return;o.rotation=Number(e.target.value)*Math.PI/180;snapshot();paint()});
@@ -787,19 +853,19 @@ function openToolsFromToolbar(){
 const activeToolTrigger=$('#activeToolTrigger');
 if(activeToolTrigger){
  activeToolTrigger.addEventListener('click',openToolsFromToolbar);
- activeToolTrigger.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openToolsFromToolbar()}});
+ // Native button handles Enter/Space automatically.
 }
 $('#windowsBtn').onclick=resetLayout;$('#libraryToggleBtn').onclick=()=>togglePanel('panelLibrary');
 const popup=document.createElement('div');popup.className='menupopup';popup.hidden=true;document.body.appendChild(popup);
 const menus={
  File:[['New blank canvas','Ctrl+N','new'],['Open image…','Ctrl+O','open'],['Paste screenshot','Ctrl+V','paste'],['Save project','Ctrl+S','save'],['Save a copy…','','savecopy'],['My saved images','','panelLibrary'],['Export PNG','','png'],['Export JPG','','jpg']],
- Edit:[['Undo','Ctrl+Z','undo'],['Redo','Ctrl+Y','redo'],['Delete selection','Del','delete'],['Deselect','Esc','deselect'],['Select / move','V','select'],['Magic Wand','W','wand'],['Copy image','','copy'],['Copy selected area','Ctrl+C','copyselected'],['Paste from clipboard','Ctrl+V','paste']],
+ Edit:[['Undo','Ctrl+Z','undo'],['Redo','Ctrl+Y','redo'],['Erase Selection','Del','delete'],['Invert Selection','Ctrl+Shift+I','invertselection'],['Copy Selection','Ctrl+C','copyselected'],['Paste Selection','Ctrl+V','pasteselection'],['Deselect','Esc','deselect'],['Select / move','V','select'],['Magic Wand','W','wand'],['Copy entire image','','copy']],
  View:[['Fit canvas','','fit'],['Zoom in','+','zin'],['Zoom out','−','zout'],['Zoom tool','Z','zoom'],['Pan tool','H','pan'],['Restore floating windows','','layout']],
  Image:[['Crop to selection','C','cropselection'],['Resize…','Ctrl+R','resizeimage'],['Canvas Size…','Ctrl+Shift+R','canvassize'],['Flip Horizontal','','flipH'],['Flip Vertical','','flipV'],['Rotate 90° Clockwise','','cw'],['Rotate 90° Counter-Clockwise','','ccw'],['Rotate 180°','','180'],['Flatten','','flatten']],
  Windows:[['Tools','','panelTools'],['Colors','','panelColors'],['My images','','panelLibrary'],['History','','panelHistory'],['Reset layout','','layout']]
 };
-function runMenuAction(a){popup.hidden=true;switch(a){case 'new':createBlank();break;case 'open':el.file.click();break;case 'paste':pasteButton();break;case 'save':saveProject();break;case 'savecopy':saveProject(true);break;case 'png':$('#exportFormat').value='png';exportImage();break;case 'jpg':$('#exportFormat').value='jpeg';exportImage();break;case 'undo':restore(st.historyIdx-1);break;case 'redo':restore(st.historyIdx+1);break;case 'copy':copyImage();break;case 'select':setTool('select');break;case 'wand':setTool('wand');break;case 'bucket':setTool('bucket');break;case 'picker':setTool('picker');break;case 'delete':deleteSelection();break;case 'copyselected':copySelectedPixels();break;case 'deselect':deselect();break;case 'pan':setTool('pan');break;case 'zoom':setTool('zoom');break;case 'fit':fitZoom();break;case 'zin':zoomBy(1.2);break;case 'zout':zoomBy(1/1.2);break;case 'crop':setTool('crop');break;case 'cropselection':cropToSelection();break;case 'resizeimage':showSizeDialog('resize');break;case 'canvassize':showSizeDialog('canvas');break;case 'flipH':case 'flipV':case 'cw':case 'ccw':case '180':transformImage(a);break;case 'flatten':flattenImage();break;case 'layout':resetLayout();break;default:if(panelIds.includes(a))togglePanel(a)}}
-function showMenu(name,anchor){if(!popup.hidden&&popup.dataset.name===name){popup.hidden=true;return}popup.dataset.name=name;popup.replaceChildren();for(const [label,key,action] of menus[name]){let b=document.createElement('button');b.type='button';let title=document.createElement('span'),shortcut=document.createElement('span');title.textContent=label;shortcut.textContent=key;shortcut.className='menu-shortcut';b.append(title,shortcut);if((action==='delete'||action==='deselect')&&!hasSelection())b.disabled=true;if(action==='copyselected'&&!hasSelection())b.disabled=true;b.onclick=()=>runMenuAction(action);popup.appendChild(b)}let r=anchor.getBoundingClientRect();popup.style.left=Math.min(window.innerWidth-220,r.left)+'px';popup.style.top=r.bottom+'px';popup.hidden=false}
+function runMenuAction(a){popup.hidden=true;switch(a){case 'new':createBlank();break;case 'open':el.file.click();break;case 'paste':pasteButton();break;case 'save':saveProject();break;case 'savecopy':saveProject(true);break;case 'png':$('#exportFormat').value='png';exportImage();break;case 'jpg':$('#exportFormat').value='jpeg';exportImage();break;case 'undo':restore(st.historyIdx-1);break;case 'redo':restore(st.historyIdx+1);break;case 'copy':copyImage();break;case 'select':setTool('select');break;case 'wand':setTool('wand');break;case 'bucket':setTool('bucket');break;case 'picker':setTool('picker');break;case 'delete':deleteSelection();break;case 'copyselected':copySelectedPixels();break;case 'invertselection':invertSelection();break;case 'pasteselection':pasteSelection();break;case 'deselect':deselect();break;case 'pan':setTool('pan');break;case 'zoom':setTool('zoom');break;case 'fit':fitZoom();break;case 'zin':zoomBy(1.2);break;case 'zout':zoomBy(1/1.2);break;case 'crop':setTool('crop');break;case 'cropselection':cropToSelection();break;case 'resizeimage':showSizeDialog('resize');break;case 'canvassize':showSizeDialog('canvas');break;case 'flipH':case 'flipV':case 'cw':case 'ccw':case '180':transformImage(a);break;case 'flatten':flattenImage();break;case 'layout':resetLayout();break;default:if(panelIds.includes(a))togglePanel(a)}}
+function showMenu(name,anchor){if(!popup.hidden&&popup.dataset.name===name){popup.hidden=true;return}popup.dataset.name=name;popup.replaceChildren();for(const [label,key,action] of menus[name]){let b=document.createElement('button');b.type='button';let title=document.createElement('span'),shortcut=document.createElement('span');title.textContent=label;shortcut.textContent=key;shortcut.className='menu-shortcut';b.append(title,shortcut);if((action==='delete'||action==='deselect')&&!hasSelection())b.disabled=true;if(action==='copyselected'&&!hasSelection())b.disabled=true;if(action==='invertselection'&&!(st.wand||st.marquee))b.disabled=true;b.onclick=()=>runMenuAction(action);popup.appendChild(b)}let r=anchor.getBoundingClientRect();popup.style.left=Math.min(window.innerWidth-220,r.left)+'px';popup.style.top=r.bottom+'px';popup.hidden=false}
 for(const name of Object.keys(menus)){$('#menu'+name).onclick=e=>{e.stopPropagation();showMenu(name,$('#menu'+name))}}
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menupopup')&&!e.target.closest('.menu'))popup.hidden=true});
 function askProjectName(title,initial){return new Promise(resolve=>{let dlg=$('#projectSaveDialog'),input=$('#projectNameInput');$('#saveDialogTitle').textContent=title;input.value=initial;let settled=false;const close=(value)=>{if(settled)return;settled=true;dlg.removeEventListener('close',cancel);dlg.close();resolve(value)};const cancel=()=>{if(!settled){settled=true;resolve(null)}};dlg.addEventListener('close',cancel);$('#confirmProjectSave').onclick=()=>close(input.value);$('#cancelProjectSave').onclick=()=>close(null);input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(input.value)}};dlg.showModal();input.focus();input.select()})}
