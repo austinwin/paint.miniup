@@ -46,6 +46,10 @@
  <button class="barbtn" id="copyBtn" title="Copy image to clipboard"><svg><use href="#i-copy"/></svg>Copy</button>
  <div class="barspacer"></div><button class="barbtn" id="windowsBtn" title="Reset floating window positions">↻ Layout</button>
 </div>
+<div class="document-tabs" aria-label="Open images">
+ <div class="document-tab-list" id="documentTabList" role="tablist" aria-label="Image tabs"></div>
+ <button type="button" id="newTabBtn" class="document-new-tab" title="New image (Ctrl+N)" aria-label="New image">+</button>
+</div>
 <div class="optbar">
  <button type="button" class="toolname toolname-trigger" id="activeToolTrigger" aria-label="Paintbrush — Open Tools window" aria-controls="panelTools" aria-haspopup="true" title="Choose a drawing tool"><span class="tool-picker-title" aria-hidden="true">Tool:</span><svg aria-hidden="true"><use id="activeToolIcon" href="#i-pen"/></svg><span id="activeToolLabel" class="visually-hidden">Paintbrush</span><span class="toolname-chevron" aria-hidden="true">▾</span></button><span class="sep"></span>
  <div id="zoomOptions" class="context-options zoom-options" hidden role="group" aria-label="Zoom controls"><button type="button" id="toolZoomOut" title="Zoom out" aria-label="Zoom out">−</button><strong id="toolZoomValue">100%</strong><button type="button" id="toolZoomIn" title="Zoom in" aria-label="Zoom in">+</button><button type="button" id="toolZoomFit" title="Fit canvas">Fit</button></div>
