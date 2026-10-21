@@ -13,7 +13,7 @@ const vm=require('node:vm');
 
 const source=fs.readFileSync(path.resolve(__dirname,'../app.js'),'utf8');
 const html=fs.readFileSync(path.resolve(__dirname,'../index.html'),'utf8');
-const ids=[...new Set([...html.matchAll(/\\bid="([^"]+)"/g)].map(match=>match[1]))];
+const ids=[...new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]))];
 
 function mockBrowser(){
  const context2D={
