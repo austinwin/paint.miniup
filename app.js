@@ -570,6 +570,8 @@ function pointerDown(e){
  st.pointer=p;st.dragging=true;st.moving=false;
  if(st.tool==='pan'){st.panning={x:e.clientX,y:e.clientY,left:el.work.scrollLeft,top:el.work.scrollTop};el.canvas.style.cursor='grabbing'}
  else if(st.tool==='select'){
+   // A new selection gesture replaces any inverted or Magic Wand pixel mask.
+   st.wand=null;
    if(st.marquee&&insideMarquee(p)){
      if(liftMarquee()){st.transform={mode:'move',original:copyObj(st.objects[st.selected]),origin:p,center:objectCenter(st.objects[st.selected])};st.originalObject=copyObj(st.objects[st.selected]);st.moving=false}
    }else{
