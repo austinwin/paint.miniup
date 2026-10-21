@@ -1244,23 +1244,91 @@ async function saveProject(asCopy=false){
   console.error(err);toast('Browser storage failed or is full. Export the image instead.');
  }
 }
-async function renderLibrary(){const list=$('#projectList');if(!list)return;try{let projects=(await dbAll()).sort((a,b)=>b.updatedAt-a.updatedAt);$('#libraryCount').textContent=projects.length+' saved';list.innerHTML='';if(!projects.length){list.innerHTML='<div class="no-projects">No saved images yet.<br>Click <b>Save canvas</b> to store this work in your browser.</div>';return}for(const item of projects){let card=document.createElement('div');card.className='project';let img=document.createElement('img');img.className='thumb';img.src=item.thumbnail;img.alt='Preview';let open=document.createElement('button');open.className='openproj';let n=document.createElement('div');n.className='project-name';n.textContent=item.name;let d=document.createElement('div');d.className='project-time';d.textContent=new Date(item.updatedAt).toLocaleDateString()+' · '+item.width+' × '+item.height;open.append(n,d);open.title='Open '+item.name;open.onclick=()=>openProject(item.id);let del=document.createElement('button');del.className='delproj';del.textContent='×';del.title='Delete '+item.name;del.onclick=()=>deleteProject(item.id,item.name);card.append(img,open,del);list.appendChild(card)}}catch(e){console.error(e);list.innerHTML='<div class="no-projects">Browser storage is unavailable.<br>Export images as files instead.</div>';$('#libraryCount').textContent='Unavailable'}}
+async function renderLibrary(){
+ const list=$('#projectList');if(!list)return;
+ try{
+  const projects=(await dbAll()).sort((a,b)=>b.updatedAt-a.updatedAt);
+  $('#libraryCount').textContent=projects.length+' saved';
+  list.replaceChildren();
+  if(!projects.length){
+   list.innerHTML='<div class="no-projects">No saved images yet. Save a canvas to store your work in this browser.</div>';
+   return;
+  }
+  for(const item of projects){
+   const card=document.createElement('div');card.className='project';
+   // The entire thumbnail and title are one tap target; Delete remains separate.
+   const open=document.createElement('button');open.type='button';open.className='openproj';
+   open.title='Open '+item.name+' in a tab';open.setAttribute('aria-label','Open '+item.name+' in a tab');
+   const thumbnail=document.createElement('img');thumbnail.className='thumb';
+   thumbnail.src=item.thumbnail;thumbnail.alt='';
+   const details=document.createElement('span');details.className='project-details';
+   const name=document.createElement('span');name.className='project-name';name.textContent=item.name;
+   const metadata=document.createElement('span');metadata.className='project-time';
+   metadata.textContent=new Date(item.updatedAt).toLocaleDateString()+' · '+item.width+' × '+item.height;
+   details.append(name,metadata);open.append(thumbnail,details);
+   open.addEventListener('click',async()=>{
+    if(open.getAttribute('aria-busy')==='true')return;
+    open.setAttribute('aria-busy','true');
+    try{await openProject(item.id)}finally{open.removeAttribute('aria-busy')}
+   });
+   const del=document.createElement('button');del.type='button';del.className='delproj';
+   del.textContent='×';del.title='Delete '+item.name;del.setAttribute('aria-label','Delete '+item.name);
+   del.addEventListener('click',()=>deleteProject(item.id,item.name));
+   card.append(open,del);list.appendChild(card);
+  }
+ }catch(error){
+  console.error(error);
+  list.innerHTML='<div class="no-projects">Browser storage is unavailable. Export important images as files instead.</div>';
+  $('#libraryCount').textContent='Unavailable';
+ }
+}
+const openingProjects=new Set();
+async function decodeSavedImage(blob){
+ if(!(blob instanceof Blob))throw new Error('Saved image data is missing');
+ if(typeof createImageBitmap==='function'){
+  try{return await createImageBitmap(blob)}
+  catch(error){console.warn('ImageBitmap could not decode saved image; trying native image loader.',error)}
+ }
+ // Native <img> fallback improves compatibility with iOS Safari IndexedDB blobs.
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(blob),image=new Image();
+  image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};
+  image.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Unable to decode saved image'))};
+  image.src=url;
+ });
+}
 async function openProject(id){
- const alreadyOpen=openTabs.find(tab=>stateForTab(tab)?.savedId===id);
- if(alreadyOpen){activateTab(alreadyOpen.id);return}
+ if(openingProjects.has(id))return false;
+ const existing=openTabs.find(tab=>stateForTab(tab)?.savedId===id);
+ if(existing){activateTab(existing.id);return true}
+ openingProjects.add(id);
  try{
   const record=await dbGet(id);
-  if(!record){toast('Project not found.');return}
-  const bitmap=await createImageBitmap(record.baseBlob);
+  if(!record){toast('Saved project not found.');return false}
+  // Check again after asynchronous loading, in case another action opened this project.
+  const opened=openTabs.find(tab=>stateForTab(tab)?.savedId===id);
+  if(opened){activateTab(opened.id);return true}
+  const bitmap=await decodeSavedImage(record.baseBlob);
   const image=document.createElement('canvas');image.width=bitmap.width;image.height=bitmap.height;
-  image.getContext('2d').drawImage(bitmap,0,0);bitmap.close();
-  // A project from the saved library joins the existing images, preserving them.
+  image.getContext('2d').drawImage(bitmap,0,0);
+  bitmap.close?.();
+  // Saved projects join the tabs without replacing or losing the current document.
   initiate(image,record.name,false);
   st.objects=copyObj(record.objects||[]);st.savedId=record.id;
   st.history=[];st.historyIdx=-1;snapshot();st.dirty=false;
   updateContextOptions();refreshDirtyStatus();paint();
-  toast('Opened '+record.name+' in a new tab.');
- }catch(err){console.error(err);toast('Unable to open this saved project.')}
+  if(window.innerWidth<=620){
+   // On phones the floating library can cover most of the newly opened image.
+   $('#panelLibrary').classList.add('hidden');
+   rememberLayout();
+  }
+  toast('Opened '+record.name+' in a tab.');
+  return true;
+ }catch(error){
+  console.error('Unable to open saved project',id,error);
+  toast('Could not open this saved image. Try reloading the page.');
+  return false;
+ }finally{openingProjects.delete(id)}
 }
 async function deleteProject(id,name){
  if(!confirm('Delete "'+name+'" from this browser? This cannot be undone.'))return;
