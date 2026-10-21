@@ -1082,6 +1082,24 @@ function applySizeDialog(){
 function cropToSelection(){if(st.marquee){const r=marqueeBounds();if(!r||r.w<2||r.h<2)return;st.crop={type:'crop',x1:r.x,y1:r.y,x2:r.x+r.w,y2:r.y+r.h};applyCrop()}else if(st.crop)applyCrop();else{setTool('crop');toast('Drag a rectangle and choose Apply crop.')}}
 function safeFilename(){return st.name.replace(/\.[^.]+$/,'').replace(/[^\w\-. ]+/g,'').trim().slice(0,70)||'marked-image'}
 async function exportImage(){if(!st.base){toast('Open or paste an image first.');return}finishText(true);let kind=$('#exportFormat').value,can=composite(),mime=kind==='jpeg'?'image/jpeg':'image/png';if(kind==='jpeg'){const c=document.createElement('canvas');c.width=can.width;c.height=can.height;const g=c.getContext('2d');g.fillStyle='#ffffff';g.fillRect(0,0,c.width,c.height);g.drawImage(can,0,0);can=c}can.toBlob(blob=>{if(!blob){toast('Could not export this image.');return}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=safeFilename()+'-marked.'+(kind==='jpeg'?'jpg':'png');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast('Image saved to your downloads.')},mime,.92)}
+async function shareImage(){
+ if(!st.base)return;
+ finishText(true);
+ try{
+  const canvas=composite();
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('PNG conversion failed')),'image/png'));
+  const file=new File([blob],safeFilename()+'.png',{type:'image/png'});
+  if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+   await navigator.share({files:[file],title:st.name||'Paint image'});return;
+  }
+  // Desktop browsers with no native share target can still export the PNG.
+  $('#exportFormat').value='png';await exportImage();
+ }catch(error){
+  if(error?.name==='AbortError')return;
+  console.warn('Image share failed',error);
+  toast('Sharing is unavailable. Export PNG or Copy Image instead.');
+ }
+}
 async function copyImage(){if(!st.base){toast('Open or paste an image first.');return}finishText(true);try{if(!navigator.clipboard?.write||!window.ClipboardItem)throw new Error('Clipboard image write not available');let can=composite();const blob=await new Promise(resolve=>can.toBlob(resolve,'image/png'));await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);toast('Annotated image copied to clipboard.')}catch(e){toast('Copy requires HTTPS and clipboard permission. Use Save image instead.')}}
 // Pasted screenshots are overlays, never replacement documents. Open Image still uses readBlob().
 async function pasteImageObject(blob){
@@ -1194,7 +1212,7 @@ async function openImageFiles(files){
  for(const file of files)if(file.type.startsWith('image/'))await readBlob(file,file.name);
 }
 el.file.addEventListener('change',e=>{const files=[...(e.target.files||[])];el.file.value='';if(files.length)openImageFiles(files)});
-$('#pasteBtn').onclick=pasteButton;$('#saveBtn').onclick=saveProject;$('#copyBtn').onclick=copyImage;
+$('#pasteBtn').onclick=pasteButton;$('#saveBtn').onclick=saveProject;$('#copyBtn').onclick=copyImage;$('#shareBtn').onclick=shareImage;
 $('#undoBtn').onclick=()=>restore(st.historyIdx-1);$('#redoBtn').onclick=()=>restore(st.historyIdx+1);
 $('#topColor').addEventListener('input',e=>setColor(e.target.value));
 for(const [id,property,output] of [['brushHardness','hardness','brushHardnessValue'],['brushOpacity','opacity','brushOpacityValue']])$('#'+id).addEventListener('input',e=>{
@@ -1222,10 +1240,14 @@ function touchMidpoint(){
  return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};
 }
 el.canvas.addEventListener('pointerdown',e=>{
- if(!st.base||st.tool!=='pan'||e.pointerType!=='touch')return;
+ if(!st.base||e.pointerType!=='touch')return;
  panTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(panTouches.size>=2){
-  st.dragging=false;st.panning=null;pinchState=touchMidpoint();
+  // Starting a second finger cancels the first finger's unfinished edit.
+  if(st.selected>=0&&st.transform?.original)st.objects[st.selected]=copyObj(st.transform.original);
+  if(st.transform?.mode==='marquee')st.marquee=null;
+  st.dragging=false;st.panning=null;st.draft=null;st.crop=null;st.transform=null;st.paintSelection=null;st.cloneBase=null;
+  pinchState=touchMidpoint();paint();
   e.preventDefault();e.stopImmediatePropagation();
   try{el.canvas.setPointerCapture(e.pointerId)}catch(_){}
  }
@@ -1248,11 +1270,11 @@ function endPanTouch(e){
  if(!panTouches.has(e.pointerId))return;
  const wasPinching=panTouches.size>=2||!!pinchState;
  panTouches.delete(e.pointerId);
- if(panTouches.size===1){
-  const point=[...panTouches.values()][0];
-  st.dragging=true;
+ if(!wasPinching){pinchState=null;return} // Let normal single-finger drawing commit.
+ if(panTouches.size===1&&st.tool==='pan'){
+  const point=[...panTouches.values()][0];st.dragging=true;
   st.panning={x:point.x,y:point.y,left:el.work.scrollLeft,top:el.work.scrollTop};
- }else if(!panTouches.size){st.panning=null;st.dragging=false}
+ }else{st.panning=null;st.dragging=false}
  pinchState=null;
  if(wasPinching){e.preventDefault();e.stopImmediatePropagation();el.canvas.style.cursor='grab'}
 }
@@ -1310,14 +1332,14 @@ if(activeToolTrigger){
 $('#windowsBtn').onclick=resetLayout;$('#libraryToggleBtn').onclick=()=>togglePanel('panelLibrary');
 const popup=document.createElement('div');popup.className='menupopup';popup.hidden=true;document.body.appendChild(popup);
 const menus={
- File:[['New blank canvas','Ctrl+N','new'],['Open image…','Ctrl+O','open'],['Paste screenshot','Ctrl+V','paste'],['Save project','Ctrl+S','save'],['Save a copy…','','savecopy'],['My saved images','','panelLibrary'],['Export PNG','','png'],['Export JPG','','jpg']],
+ File:[['New blank canvas','Ctrl+N','new'],['Open image…','Ctrl+O','open'],['Paste screenshot','Ctrl+V','paste'],['Save project','Ctrl+S','save'],['Save a copy…','','savecopy'],['My saved images','','panelLibrary'],['Export PNG','','png'],['Export JPG','','jpg'],['Share image…','','share']],
  Edit:[['Undo','Ctrl+Z','undo'],['Redo','Ctrl+Y','redo'],['Erase Selection','Del','delete'],['Invert Selection','Ctrl+Shift+I','invertselection'],['Copy Selection','Ctrl+C','copyselected'],['Paste Selection','Ctrl+V','pasteselection'],['Deselect','Esc','deselect'],['Select / move','V','select'],['Magic Wand','W','wand'],['Copy entire image','','copy']],
  View:[['Fit canvas','','fit'],['Zoom in','+','zin'],['Zoom out','−','zout'],['Zoom tool','Z','zoom'],['Pan tool','H','pan'],['Restore floating windows','','layout']],
  Image:[['Crop to selection','C','cropselection'],['Resize…','Ctrl+R','resizeimage'],['Canvas Size…','Ctrl+Shift+R','canvassize'],['Flip Horizontal','','flipH'],['Flip Vertical','','flipV'],['Rotate 90° Clockwise','','cw'],['Rotate 90° Counter-Clockwise','','ccw'],['Rotate 180°','','180'],['Flatten','','flatten']],
  Windows:[['Tools','','panelTools'],['Colors','','panelColors'],['My images','','panelLibrary'],['History','','panelHistory'],['Reset layout','','layout']]
 };
 function closeMenu(){popup.hidden=true;document.querySelectorAll('.menu').forEach(button=>button.setAttribute('aria-expanded','false'))}
-function runMenuAction(a){closeMenu();switch(a){case 'new':createBlank();break;case 'open':el.file.click();break;case 'paste':pasteButton();break;case 'save':saveProject();break;case 'savecopy':saveProject(true);break;case 'png':$('#exportFormat').value='png';exportImage();break;case 'jpg':$('#exportFormat').value='jpeg';exportImage();break;case 'undo':restore(st.historyIdx-1);break;case 'redo':restore(st.historyIdx+1);break;case 'copy':copyImage();break;case 'select':setTool('select');break;case 'wand':setTool('wand');break;case 'bucket':setTool('bucket');break;case 'picker':setTool('picker');break;case 'delete':deleteSelection();break;case 'copyselected':copySelectedPixels();break;case 'invertselection':invertSelection();break;case 'pasteselection':pasteSelection();break;case 'deselect':deselect();break;case 'pan':setTool('pan');break;case 'zoom':setTool('zoom');break;case 'fit':fitZoom();break;case 'zin':zoomBy(1.2);break;case 'zout':zoomBy(1/1.2);break;case 'crop':setTool('crop');break;case 'cropselection':cropToSelection();break;case 'resizeimage':showSizeDialog('resize');break;case 'canvassize':showSizeDialog('canvas');break;case 'flipH':case 'flipV':case 'cw':case 'ccw':case '180':transformImage(a);break;case 'flatten':flattenImage();break;case 'layout':resetLayout();break;default:if(panelIds.includes(a))togglePanel(a)}}
+function runMenuAction(a){closeMenu();switch(a){case 'new':createBlank();break;case 'open':el.file.click();break;case 'paste':pasteButton();break;case 'save':saveProject();break;case 'savecopy':saveProject(true);break;case 'png':$('#exportFormat').value='png';exportImage();break;case 'jpg':$('#exportFormat').value='jpeg';exportImage();break;case 'undo':restore(st.historyIdx-1);break;case 'redo':restore(st.historyIdx+1);break;case 'copy':copyImage();break;case 'share':shareImage();break;case 'select':setTool('select');break;case 'wand':setTool('wand');break;case 'bucket':setTool('bucket');break;case 'picker':setTool('picker');break;case 'delete':deleteSelection();break;case 'copyselected':copySelectedPixels();break;case 'invertselection':invertSelection();break;case 'pasteselection':pasteSelection();break;case 'deselect':deselect();break;case 'pan':setTool('pan');break;case 'zoom':setTool('zoom');break;case 'fit':fitZoom();break;case 'zin':zoomBy(1.2);break;case 'zout':zoomBy(1/1.2);break;case 'crop':setTool('crop');break;case 'cropselection':cropToSelection();break;case 'resizeimage':showSizeDialog('resize');break;case 'canvassize':showSizeDialog('canvas');break;case 'flipH':case 'flipV':case 'cw':case 'ccw':case '180':transformImage(a);break;case 'flatten':flattenImage();break;case 'layout':resetLayout();break;default:if(panelIds.includes(a))togglePanel(a)}}
 function showMenu(name,anchor){
  if(!popup.hidden&&popup.dataset.name===name){closeMenu();return}
  closeMenu();
