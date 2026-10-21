@@ -505,6 +505,12 @@ function clipStrokeToSelection(o,selection){
  if(!maskCanvasToSelection(layer,bounds,selection))return null;
  return patchFromCanvas(layer,bounds,o.type==='eraser-stroke');
 }
+function makeGradientPatch(o){
+ const bounds={x:0,y:0,w:st.base.width,h:st.base.height};
+ if(bounds.w*bounds.h>12000000){toast('Gradient is limited to 12 megapixels. Resize first.');return null}
+ const layer=boundedCanvas(bounds);drawGradient(layer.getContext('2d'),o);
+ return patchFromCanvas(layer,bounds);
+}
 function makeClonePatch(o,source,anchor){
  if(!source||!anchor||!o.points?.length)return null;
  const bounds=operationBounds(o);
@@ -952,6 +958,7 @@ function pointerUp(e){
    if(o.type==='curve')o.control={x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};
    let finished=o;
    if(o.type==='clone-preview')finished=makeClonePatch(o,st.cloneBase,st.cloneSource);
+   else if(o.type==='gradient'&&!st.paintSelection)finished=makeGradientPatch(o);
    else if(o.type==='redact'&&o.mode!=='solid')finished=makePrivacyPatch(o);
    else if(st.paintSelection)finished=clipStrokeToSelection(o,st.paintSelection);
    if(finished){st.objects.push(finished);snapshot()}
