@@ -1,0 +1,200 @@
+:root{--ink:#253041;--muted:#68768a;--line:#c9cfda;--panel:#fafbfe;--chrome:#f3f4f9;--blue:#3177cf;--light:#e8f0ff;--shadow:0 11px 30px rgba(34,45,67,.17),0 2px 5px #293b561a;font-family:Segoe UI,Arial,Helvetica,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{background:#c7cfdb;color:var(--ink);font:12px/1.35 'Segoe UI',Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer;color:inherit}button:disabled{opacity:.37;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #3289ef;outline-offset:1px}
+.app{display:grid;grid-template-rows:37px 36px 46px 42px minmax(0,1fr) 29px;height:100dvh;min-height:420px}
+.titlebar{height:37px;background:linear-gradient(#f8f8ff,#eeedf7);border-bottom:1px solid #d0d1db;display:flex;align-items:center;padding:0 13px;gap:13px}.brandicon{display:grid;place-items:center;width:23px;height:23px;background:#255eb0;color:white;border-radius:4px}.brandicon svg{width:15px;height:15px}.brandtext{font-size:13px;font-weight:700;color:#233e6d;letter-spacing:-.15px}.docname{font-size:12px;color:#586780;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topspacer{flex:1}.privacy{font-size:11px;color:#4f6d60;background:#e7f3e9;border:1px solid #cde2d2;border-radius:20px;padding:4px 9px}.menurow{height:36px;display:flex;align-items:center;gap:3px;padding:0 10px;background:#fafbfe;border-bottom:1px solid #c7ceda}.menu{height:27px;border:0;border-radius:3px;background:none;padding:0 11px;font-size:12px}.menu:hover{background:#e4eafa}.menu.save{font-weight:650}.menu + .hintmenu{margin-left:auto;color:#8190a3;font-size:11px}
+.actionbar{display:flex;align-items:center;gap:5px;padding:0 13px;background:linear-gradient(#fff,#f4f6f9);border-bottom:1px solid #c8d0db;min-width:0;overflow:auto;scrollbar-width:thin}.barbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid transparent;border-radius:4px;min-height:29px;padding:0 9px;background:transparent;white-space:nowrap;font-weight:550}.barbtn:hover{background:#e7edf7;border-color:#ccd7e7}.barbtn svg{width:16px;height:16px}.barbtn.primary{background:#216dc3;border-color:#195dad;color:#fff}.barbtn.primary:hover{background:#175ca8}.barbtn.project{border-color:#cad4e3;background:#f8fbff}.sep{flex:none;width:1px;height:22px;background:#d7dce5;margin:0 5px}.barspacer{flex:1}.keycap{font-size:10px;color:#8494a7}
+.optbar{display:flex;align-items:center;gap:10px;background:#f8f9fc;border-bottom:1px solid #c5cbd6;padding:0 13px;white-space:nowrap;overflow:auto;scrollbar-width:thin}.optlabel{font-size:11px;color:#69778a}.toolname{display:flex;align-items:center;gap:6px;font-weight:700;min-width:87px}.toolname svg{width:17px;height:17px;color:#376cc5}.optbar input[type=range]{width:100px;accent-color:#3173c4}.smallnum{width:50px;height:25px;border:1px solid #c8cfd9;border-radius:3px;background:white;padding:2px 5px}.selectfield{height:25px;border:1px solid #c8cfd9;border-radius:3px;background:#fff;padding:1px 5px}.topcolor{height:25px;width:31px;padding:2px;border:1px solid #bdc8d8;background:#fff;border-radius:3px}.topcolor::-webkit-color-swatch-wrapper{padding:0}.topcolor::-webkit-color-swatch{border:0}.fontpack{display:flex!important;align-items:center;gap:7px}.optbar .optspacer{flex:1}.microhelp{font-size:11px;color:#8390a0;text-overflow:ellipsis;overflow:hidden;max-width:340px}
+.work-area{min-width:0;min-height:0;position:relative;overflow:hidden;background:#cbd3df}.workspace{position:absolute;inset:0;overflow:auto;background:#c9d2e0;overscroll-behavior:contain}.canvas-center{min-width:100%;min-height:100%;width:max-content;height:max-content;display:flex;justify-content:center;align-items:center;padding:50px 220px 60px 225px}.canvas-stage{background:white;position:relative;box-shadow:0 2px 16px #3341582b,0 0 0 1px #98a4b6;flex:none;touch-action:none;display:block}.canvas-stage canvas{display:block;touch-action:none}.text-entry{display:none;position:absolute;z-index:5;resize:both;min-width:100px;min-height:35px;padding:2px 4px;overflow:auto;background:#ffffffd9;outline:1.5px solid #337ada;border:0;line-height:1.2;white-space:pre-wrap}
+.cropbar{position:absolute;top:45px;left:50%;transform:translateX(-50%);z-index:11;background:#fff;box-shadow:var(--shadow);padding:7px;border:1px solid #c6d2df;border-radius:5px;display:none;align-items:center;gap:6px}.cropbar .barbtn{border:1px solid #c6d3e3}.zoom-box{position:absolute;right:18px;bottom:14px;z-index:9;display:flex;align-items:center;gap:4px;padding:4px 7px;border:1px solid #abb7c6;background:#f8fafeed;border-radius:5px;box-shadow:0 1px 4px #40516c2a}.zoom-box button{border:0;background:transparent;font-weight:650;padding:3px 7px}.zoom-box button:hover{background:#dfe8f4}.zoom-readout{width:48px;text-align:center;font-weight:650}.toast{position:absolute;bottom:52px;left:50%;z-index:60;transform:translateX(-50%);padding:10px 16px;border-radius:5px;background:#263449;color:#fff;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .15s}.toast.show{opacity:1}.drop-screen{position:absolute;inset:0;background:#e5effce0;border:4px dashed #6b9be1;display:none;align-items:center;justify-content:center;z-index:45;font-size:20px;color:#275fa1;pointer-events:none}.drop-screen.show{display:flex}.empty-state{display:none}
+.float{position:absolute;background:#fcfdff;border:1px solid #9eabc1;border-radius:5px;box-shadow:var(--shadow);z-index:10;display:flex;flex-direction:column;min-width:166px;min-height:72px;resize:both;overflow:hidden}.float.hidden{display:none}.float:focus-within,.float.raised{z-index:22}.float-head{height:30px;flex:none;background:linear-gradient(#f2f2fc,#dce3f1);border-bottom:1px solid #b7c3d6;display:flex;align-items:center;padding:0 8px 0 11px;gap:7px;cursor:move;user-select:none;touch-action:none}.float-head:active{background:#d6e3f7}.floaticon{font-size:11px;color:#2d66b3}.float-title{flex:1;font-size:12px;font-weight:650;color:#334762}.float-close{border:1px solid transparent;background:transparent;height:22px;width:22px;border-radius:3px;color:#65758b;display:grid;place-items:center}.float-close:hover{background:#dfe6f5;border-color:#bcc9da}.float-body{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;min-height:0}
+#panelTools{left:18px;top:20px;width:196px;height:390px}#panelColors{left:18px;bottom:17px;width:238px;height:293px}#panelLibrary{right:18px;top:20px;width:252px;height:300px}#panelHistory{right:18px;bottom:16px;width:252px;height:190px}
+.toolgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:12px 11px 7px}.toolbutton{height:37px;border:1px solid transparent;border-radius:4px;background:#f8faff;display:flex;align-items:center;justify-content:center;color:#445772}.toolbutton svg{height:21px;width:21px}.toolbutton:hover{background:#e8f0fc;border-color:#cad8ed}.toolbutton.active{background:#dceaff;border:1px solid #6a9bdf;color:#155eb5;box-shadow:inset 0 1px 1px #ffffffcc}.toolfoot{padding:8px 13px 14px}.toolfoot strong{display:block;color:#384f6b;font-size:12px}.toolfoot p{margin:3px 0 0;font-size:11px;color:#7e8da0;line-height:1.45}.toolseparator{height:1px;margin:5px 12px;background:#e1e5eb}
+.color-body{padding:11px}.current-colors{display:flex;align-items:center;justify-content:space-between;padding:0 2px 6px}.chiplabel{font-size:11px;color:#697991}.colorstack{width:49px;height:30px;position:relative}.secondary-chip,.primary-chip{position:absolute;border:1px solid #758399;box-shadow:inset 0 0 0 2px white}.secondary-chip{width:30px;height:22px;right:0;top:7px;background:#fff}.primary-chip{height:26px;width:32px;left:0;top:0;background:#e23535;z-index:1}.colorwheel-layout{display:flex;gap:10px;align-items:center;justify-content:space-between}.wheelwrap{position:relative;width:143px;height:143px;flex:none}.wheelwrap canvas{height:143px;width:143px;display:block;cursor:crosshair}.wheelcross{position:absolute;width:11px;height:11px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px #374152,0 1px 4px #0007;pointer-events:none;left:112px;top:74px}.color-controls{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}.color-controls label{color:#687890;font-size:10px}.color-controls input[type=range]{width:100%;margin-top:3px;accent-color:#3474ca}.hex{width:100%;min-width:0;border:1px solid #ccd4e0;padding:5px;font-family:Consolas,monospace;font-size:11px;border-radius:3px}.swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-top:11px}.swatch{height:16px;border:1px solid #66708088;border-radius:1px;padding:0;min-width:0}.swatch.selected{outline:2px solid #3974c5;outline-offset:1px}.color-helper{font-size:10px;color:#8793a3;margin-top:8px}
+.librarytop{display:flex;align-items:center;gap:6px;padding:9px 10px;border-bottom:1px solid #e6e9ef}.librarytop button{font-weight:600;border:1px solid #b7cce6;background:#edf4ff;border-radius:4px;padding:5px 8px;color:#235aa7;white-space:nowrap}.librarytop .libmeta{margin-left:auto;font-size:10px;color:#8794a4}.project-list{padding:4px 7px 8px;display:flex;flex-direction:column;gap:4px}.project{display:grid;grid-template-columns:57px minmax(0,1fr) 23px;gap:7px;align-items:center;padding:6px;border-radius:4px;border:1px solid transparent}.project:hover{border-color:#d7e2f0;background:#f2f7ff}.thumb{width:57px;height:44px;object-fit:contain;background:#dfe5ee;border:1px solid #c8d0dd}.project-name{font-size:11.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-time{font-size:10px;color:#8492a5;margin-top:3px}.openproj{border:0;background:transparent;text-align:left;padding:0;min-width:0}.openproj:hover .project-name{color:#236bbd;text-decoration:underline}.delproj{height:25px;width:22px;border:0;background:transparent;color:#9e6470;font-size:18px}.delproj:hover{background:#ffe5e7;color:#a62538}.no-projects{padding:20px 12px;text-align:center;color:#738299;font-size:11px;line-height:1.7}.browser-note{padding:9px 11px;border-top:1px solid #e6eaf1;font-size:10px;color:#8b97a5;background:#f8faff}
+.history-list{padding:7px}.history-step{width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:3px;padding:6px 8px;font-size:11.5px;display:flex;gap:9px;align-items:center;color:#5c6e85}.history-step:hover{background:#edf3fc}.history-step.current{background:#e1edfc;border-color:#b4cff2;font-weight:700;color:#255b9a}.history-dot{height:7px;width:7px;flex:none;border-radius:50%;background:#a2b2c9}.history-step.current .history-dot{background:#2a75cc}.history-step:disabled{opacity:.45}.history-title{padding:10px 12px 4px;font-size:10px;color:#7a8aa0}
+.statusbar{background:#f8f9fc;border-top:1px solid #bec5d1;display:flex;align-items:center;gap:11px;padding:0 12px;font-size:11px;color:#6b7a8d;min-width:0}.statusbar .spacer{flex:1}.statusbar strong{color:#3b526e;font-weight:600}.status-separator{width:1px;height:12px;background:#cfd5df}.status-tip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:950px){.microhelp{display:none}.canvas-center{padding:65px 95px 75px}.float{max-width:45vw}#panelTools{left:10px;top:12px;width:160px;height:300px}#panelTools .toolgrid{gap:2px;padding:7px}#panelTools .toolbutton{height:33px}#panelColors{left:10px;bottom:12px;width:220px;height:275px}#panelLibrary{right:10px;top:12px;width:220px;height:230px}#panelHistory{right:10px;bottom:12px;width:220px;height:140px}}
+@media(max-width:620px){.app{grid-template-rows:35px 34px 39px 40px minmax(0,1fr) 27px}.titlebar .privacy{display:none}.menurow .hintmenu{display:none}.actionbar .keycap{display:none}.actionbar .barbtn{padding:0 6px;font-size:11px}.actionbar .barbtn svg{height:14px;width:14px}.optbar{gap:6px;padding:0 7px}.optbar .optlabel{display:none}.optbar input[type=range]{width:75px}.optbar .smallnum{width:40px}.optbar .toolname{min-width:65px}.selectfield{max-width:92px}.float{max-width:62vw}#panelTools{width:150px;height:245px}#panelColors{bottom:5px;width:210px;height:254px}#panelHistory{display:none}#panelLibrary{width:210px;height:180px}.status-tip{display:none}}
+.menupopup{position:fixed;z-index:100;width:216px;padding:5px;background:#fff;border:1px solid #b8c4d4;border-radius:5px;box-shadow:0 10px 25px #2637503b}.menupopup[hidden]{display:none}.menupopup button{width:100%;display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:0;border-radius:3px;background:transparent;text-align:left;font-size:12px}.menupopup button:hover{background:#e3edfc;color:#1f5da5}.menu-shortcut{color:#8a98aa;font-size:10px}
+.save-dialog{width:min(390px,calc(100vw - 40px));border-radius:8px;border:1px solid #afbacb;background:#fff;box-shadow:0 17px 60px #17243e45;padding:22px;color:#26384f}.save-dialog::backdrop{background:#26364a6b}.save-dialog h2{font-size:17px;margin:0 0 9px}.save-dialog p{font-size:12px;color:#738198;margin:0 0 18px}.save-dialog label{display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:700;color:#4f6075}.save-dialog input{padding:10px;font-size:13px;border:1px solid #b6c6d9;border-radius:5px}.dialog-actions{margin-top:23px;display:flex;justify-content:flex-end;gap:8px}.dialog-actions button{border:1px solid #c7d1de;border-radius:5px;background:#f7f9fc;padding:8px 13px}.dialog-actions .confirm{background:#256fbd;border-color:#1e5fa6;color:white}
+
+#panelTools{width:212px;height:365px}.toolgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:9px 10px 8px}.toolbutton{height:33px;justify-content:flex-start;gap:7px;padding:0 8px;text-align:left;white-space:nowrap;font-size:11px}.toolbutton svg{width:17px;height:17px;flex:none}.toolbutton span{font-weight:560}.toolfoot{padding:7px 12px 10px}.toolfoot p{margin-top:3px}
+@media(max-width:750px){#panelTools{width:185px;height:358px}.toolbutton{padding:0 5px;gap:4px;font-size:10px}}
+
+/* Keep floating palettes discoverable on narrow mobile screens; visibility is controlled by .hidden. */
+@media (max-width:620px){#panelHistory:not(.hidden){display:flex} .float.hidden{display:none!important} #panelHistory{width:210px;height:155px;right:5px;bottom:5px} #panelTools{height:260px} .float-head{min-height:30px} .float{min-width:140px}}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* v4: zoom controls, contextual properties, responsive floating toolbox. */
+.context-options{display:flex;align-items:center;gap:7px;flex:none;border-left:1px solid #d7dce5;padding-left:10px}.context-options[hidden]{display:none!important}.context-options label{display:flex;align-items:center;gap:4px;color:#526477;font-size:11px}.context-options input[type=range]{width:72px}.context-options .smallnum{width:52px}.smallaction{border:1px solid #b9c9db;border-radius:4px;background:white;height:25px;padding:0 7px;white-space:nowrap;font-size:11px}.smallaction:hover{background:#edf4fd}.smallaction:disabled{opacity:.4}.tool-zoom{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:3px 10px;font-size:11px;color:#596a83}.tool-zoom strong{font-size:11px;font-variant-numeric:tabular-nums}.tool-zoom button{height:25px;min-width:27px;padding:0 5px;background:#fff;border:1px solid #c4cfdf;border-radius:3px;font-size:13px;font-weight:600}.tool-zoom button:hover{background:#e7f0ff}.tool-zoom button:last-child{font-size:11px}
+#panelTools{height:475px;width:212px}.toolgrid{padding-bottom:5px}.toolfoot{padding:6px 10px 12px}.float .toolfoot p{line-height:1.25}
+@media(max-width:750px){#panelTools{height:390px;width:185px}.toolgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.tool-zoom{padding:3px 5px}.context-options{padding-left:5px;gap:4px}.optbar{overflow-x:auto}}
+
+/* Context controls do not take horizontal space outside their tool. */
+#fontPack[hidden],#fillShape[hidden]{display:none!important}
+#panelTools{height:408px}.toolgrid{gap:3px;padding:7px 10px 4px}.toolbutton{height:29px}.toolfoot{padding:5px 10px 8px}.toolfoot p{font-size:10px}.tool-zoom{padding:2px 9px}.toolseparator{margin:4px 10px}
+
+/* Keep irrelevant paint settings out of the contextual toolbar. */
+.optbar label[hidden]{display:none!important}
+
+/* v5: one command row. File/Edit/View contain all image commands. */
+.app{grid-template-rows:37px 36px 42px minmax(0,1fr) 29px}
+.actionbar[hidden]{display:none!important}
+.menurow .hintmenu{font-weight:500;color:#708298}
+.workspace{cursor:crosshair}
+body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-select:none!important}
+@media(max-width:620px){.app{grid-template-rows:35px 34px 40px minmax(0,1fr) 27px}.optbar{min-width:0}.menu{padding:0 7px;font-size:11px}}
+
+/* v6: quieter canvas and focused tool groups. */
+#panelTools{width:232px;height:min(540px,78vh);max-height:calc(100% - 20px)}
+#panelTools .toolgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;padding:7px 8px 5px}
+#panelTools .toolgroup{grid-column:1/-1;padding:7px 6px 3px;margin-top:3px;font-size:9px;font-weight:750;letter-spacing:.075em;color:#667993;border-bottom:1px solid #e2e8f1;user-select:none}
+#panelTools .toolgroup:first-child{margin-top:0}
+#panelTools .toolbutton{height:30px;font-size:11px;padding:0 7px;gap:6px;border-radius:4px}
+#panelTools .toolbutton:focus-visible{outline:2px solid #2676cb;outline-offset:-1px}
+#panelTools .toolbutton.active{background:#e2eeff;border-color:#6fa0e4;color:#175aa7}
+#panelTools .toolbutton svg{width:18px;height:18px}
+#panelTools .toolseparator:last-child{padding:7px 11px}
+.option-value{min-width:29px;font-size:11px;font-variant-numeric:tabular-nums;color:#364e6b}
+.options-note{font-size:10px;color:#8090a3}
+@media(max-width:750px){#panelTools{width:205px;height:min(490px,70vh)}#panelTools .toolbutton{font-size:10px;gap:4px;padding:0 5px}.options-note{display:none}}
+@media(max-width:620px){#panelTools{width:195px;height:min(470px,70vh)}#panelTools .toolgroup{padding-top:5px}#panelTools .toolbutton{height:32px}}
+
+/* Keep the default palettes from overlapping at desktop sizes; scroll within Tools as needed. */
+#panelTools{height:min(415px,65vh)}
+#panelTools .toolbutton{height:28px}
+#panelTools .toolgroup{padding:5px 5px 2px;margin-top:1px}
+#panelTools .toolseparator{margin:2px 8px}
+#panelTools .tool-zoom{padding:2px 8px}
+#strokeOptions[hidden]{display:none!important}
+@media(max-width:750px){#panelTools{height:min(395px,65vh)}}
+@media(max-width:620px){#panelTools{height:min(390px,70vh)}#panelTools .toolbutton{height:30px}}
+
+/* v7: one Delete for objects, rectangle selections, and Magic Wand. */
+.selection-actions{display:inline-flex;align-items:center;gap:5px;flex:none}
+.selection-actions[hidden]{display:none!important}
+.selection-actions button{border:1px solid #bfcbdc;border-radius:5px;background:#fff;color:#435772;height:29px;padding:0 9px;font-size:12px;white-space:nowrap;font-weight:600;cursor:pointer}
+.selection-actions button:hover{background:#edf3fb}
+.selection-actions .selection-delete{display:inline-flex;align-items:center;gap:5px;background:#eaf2ff;color:#215ea8;border-color:#9fbde9}
+.selection-actions .selection-delete:hover{background:#d7e8ff}
+.selection-delete svg{width:14px;height:14px}
+.menupopup button:disabled{opacity:.48;cursor:default}
+@media(max-width:620px){.selection-actions{gap:3px}.selection-actions button{height:28px;padding:0 7px;font-size:11px}.toolname{min-width:75px!important}.optbar{scrollbar-width:thin}.menupopup{max-height:min(64vh,420px);overflow-y:auto;max-width:calc(100vw - 20px)}}
+
+/* Paint v8: real transparent pixels (checkerboard is UI-only), compact new image tools */
+.canvas-stage {background-color:#fff;background-image:linear-gradient(45deg,#d3d7dd 25%,transparent 25%),linear-gradient(-45deg,#d3d7dd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d3d7dd 75%),linear-gradient(-45deg,transparent 75%,#d3d7dd 75%);background-position:0 0,0 8px,8px -8px,-8px 0;background-size:16px 16px}
+#shapeOptions{display:flex;align-items:center;gap:7px}#shapeOptions[hidden]{display:none!important}#shapeType{max-width:150px}
+.size-dialog{border:1px solid #bac7d7;border-radius:10px;padding:22px;width:min(420px,calc(100vw - 24px));background:#fff;color:#253041;box-shadow:0 18px 65px #17203755}
+.size-dialog::backdrop{background:#202f4280}.size-dialog h3{margin:0 0 17px;font-size:19px;font-weight:650}
+.size-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.size-fields label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#47566c}
+.size-fields input,.size-option select{width:100%;height:37px;border:1px solid #afbac9;border-radius:6px;padding:6px 9px;color:#253041;background:#fff}
+.size-option{display:flex;align-items:center;gap:9px;margin:15px 0;font-size:13px}.size-dialog p{font-size:12px;color:#66748a;line-height:1.5}
+.size-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.size-actions button{padding:9px 18px;border-radius:6px;border:1px solid #b9c5d5;background:#fff;cursor:pointer}.size-actions .primary-action{background:#2374cc;color:white;border-color:#2374cc}
+/* Minimal in-place text entry. No extra buttons or floating toolbar. */
+.text-entry{resize:both;min-width:145px;min-height:44px;max-width:none;border-radius:3px;outline:1px solid #357fce;outline-offset:0;background:#ffffffeb;box-shadow:0 1px 7px #233c5b1d;padding:6px 8px;line-height:1.25;touch-action:auto;user-select:text;-webkit-user-select:text}
+.text-entry:focus{outline:1.5px solid #2779d4}
+
+/* Paint selection options; keep the extra choices in a single compact control. */
+.selection-shape-control{gap:5px;padding-left:0;border:0}
+.selection-shape-control[hidden]{display:none!important}
+.selection-shape-control label{color:#526477;font-size:11px;white-space:nowrap}
+#selectionShape{max-width:175px;height:27px;font-size:12px;border-radius:4px}
+@media(max-width:700px){#selectionShape{max-width:145px;font-size:11px}.selection-shape-control{gap:3px}}
+
+/* Small tool surface, rich options only while the Shapes picker is open. */
+#shapeOptions{display:flex;align-items:center;gap:6px}
+#shapeOptions[hidden]{display:none!important}
+#shapeType[hidden]{display:none!important}
+.shape-picker-trigger{height:30px;min-width:139px;max-width:205px;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #b8c6d8;border-radius:6px;padding:2px 8px 2px 3px;text-align:left;color:#2f4260;font-weight:600;white-space:nowrap}
+.shape-picker-trigger:hover{background:#f0f6ff;border-color:#89aee4}
+.shape-current-icon{display:block;flex:none;width:26px;height:26px;background-position:center;background-repeat:no-repeat;background-size:25px 25px}
+#selectedShapeName{max-width:132px;overflow:hidden;text-overflow:ellipsis}
+.shape-picker-chevron{margin-left:auto;font-size:15px;color:#647c99}
+.shape-gallery{position:fixed;z-index:310;box-sizing:border-box;width:min(470px,calc(100vw - 24px));max-height:min(66dvh,540px);overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid #afbed3;border-radius:11px;box-shadow:0 18px 55px #1e334754;color:#2c4059}
+.shape-gallery[hidden]{display:none!important}
+.shape-gallery-head{height:46px;display:flex;align-items:center;padding:0 13px 0 16px;justify-content:space-between;border-bottom:1px solid #e5eaf2;flex:none}
+.shape-gallery-head strong{font-weight:650;font-size:13px}
+.shape-gallery-close{width:32px;height:32px;border:0;border-radius:7px;background:transparent;font-size:21px;color:#728096}
+.shape-gallery-close:hover{background:#edf2f9}
+.shape-gallery-sections{overflow:auto;overscroll-behavior:contain;padding:5px 13px 15px;scrollbar-width:thin}
+.shape-gallery-section h3{font-size:11px;font-weight:700;letter-spacing:.035em;color:#697b91;margin:13px 0 6px}
+.shape-gallery-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}
+.shape-gallery-option{height:48px;min-width:0;border:1px solid transparent;background:#f5f8fd;border-radius:8px;display:grid;place-items:center;touch-action:manipulation}
+.shape-gallery-option img{width:36px;height:36px;object-fit:contain}
+.shape-gallery-option:hover{border-color:#b3cef0;background:#e9f3ff}
+.shape-gallery-option.is-selected{background:#deedff;border-color:#478cdd;box-shadow:inset 0 0 0 1px #478cdd}
+.shape-gallery-option:focus-visible{outline:2px solid #2678d1;outline-offset:1px}
+@media(max-width:680px){
+ .shape-picker-trigger{height:33px;min-width:112px;max-width:150px;padding-right:6px;gap:3px}
+ #selectedShapeName{max-width:86px;font-size:11px}
+ .shape-current-icon{height:25px;width:25px;background-size:24px}
+ .shape-gallery{max-height:min(66dvh,540px);border-radius:13px;box-shadow:0 8px 32px #17294370}
+ .shape-gallery-head{height:44px}
+ .shape-gallery-sections{padding:3px 12px 14px}
+ .shape-gallery-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+ .shape-gallery-option{height:47px}
+ .shape-gallery-option img{width:35px;height:35px}
+ .shape-gallery-section h3{margin:11px 0 7px}
+ .toolbutton[data-tool="rect"],.toolbutton[data-tool="ellipse"]{display:none!important}
+}
+
+/* Compact toolbox: basic shapes live under the Shapes picker on all screen sizes. */
+.toolbutton[data-tool="rect"],.toolbutton[data-tool="ellipse"]{display:none!important}
+
+/* Icon picker: rich choices without extra permanent toolbars. */
+.icon-style-trigger{display:flex;align-items:center;gap:7px;white-space:nowrap;border:1px solid #b8c7dd;background:white;color:#36506f;border-radius:5px;padding:5px 9px;font-weight:600;font-size:11px}
+.icon-style-trigger:hover{background:#edf5ff}
+.icon-picker{position:fixed;z-index:320;width:min(376px,calc(100vw - 20px));max-height:min(75dvh,620px);box-sizing:border-box;border-radius:12px;border:1px solid #afc0d9;background:#fff;box-shadow:0 18px 48px #1a34535c;color:#30435e;display:flex;flex-direction:column;overflow:hidden}
+.icon-picker[hidden]{display:none!important}
+.icon-picker-heading{height:46px;display:flex;align-items:center;justify-content:space-between;flex:none;padding:0 14px;border-bottom:1px solid #e3eaf4;font-size:13px}
+.icon-picker-heading button{border:0;background:transparent;color:#718096;border-radius:6px;font-size:22px;width:32px;height:32px}
+.icon-picker-heading button:hover{background:#eef3f9}
+.icon-picker-tabs{display:flex;gap:5px;padding:10px 13px 0;flex:none}
+.icon-picker-tabs button{flex:1;padding:9px;border:1px solid #dce3ee;border-radius:8px;background:#f7f9fc;color:#50657e;font-weight:650}
+.icon-picker-tabs button.is-active{border-color:#89b5f0;background:#e9f3ff;color:#205b9e}
+.icon-picker-searchbox{margin:10px 13px 9px;display:flex;align-items:center;gap:7px;border:1px solid #c2cfe0;border-radius:8px;padding:0 10px;height:36px;flex:none}
+.icon-picker-searchbox:focus-within{border-color:#4289e1;box-shadow:0 0 0 2px #317ad024}
+.icon-picker-searchbox svg{width:16px;height:16px;color:#8391a2;flex:none}
+.icon-picker-searchbox input{border:0;outline:0;box-shadow:none!important;min-width:0;width:100%;height:34px;font-size:13px;background:transparent}
+.icon-picker-results{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;align-content:start;padding:3px 13px 11px;overflow-y:auto;overscroll-behavior:contain;min-height:96px;flex:1}
+.icon-cell{height:42px;width:100%;min-width:0;display:flex;align-items:center;justify-content:center;background:#f7f9fc;border:1px solid transparent;border-radius:8px;font-size:25px;touch-action:manipulation}
+.icon-cell:hover{background:#eaf3ff;border-color:#bfd8f7}
+.icon-cell.is-selected{background:#e0edff;border-color:#4a91e7;box-shadow:inset 0 0 0 1px #4a91e7}
+.icon-cell-canvas{width:31px;height:31px}
+.icon-picker-preview{display:flex;align-items:center;gap:11px;border-top:1px solid #e4eaf2;background:#fafcff;padding:10px 13px;flex:none}
+.icon-preview-sample{display:grid;place-items:center;width:62px;height:62px;flex:none;border:1px solid #d9e1ec;background:#fff;border-radius:10px;color:#a0b2c9;font-size:31px;overflow:hidden}
+.icon-preview-sample canvas{width:60px;height:60px}
+.icon-preview-emoji{font-size:40px}
+.icon-picker-controls{min-width:0;flex:1;display:flex;flex-direction:column;gap:8px}
+.icon-picker-controls label{display:flex;align-items:center;gap:7px;font-size:12px;color:#60738a}
+.icon-picker-controls label span{white-space:nowrap;font-variant-numeric:tabular-nums;color:#35516f}
+.icon-picker-controls input[type=range]{width:100%;min-width:0;accent-color:#2c7bd4;flex:1}
+.icon-color-row{display:flex;align-items:center;gap:11px}
+.icon-color-row[hidden]{display:none!important}
+.icon-color-row label:first-child input{width:31px;height:28px;padding:1px;background:#fff;border:1px solid #b5c8dd;border-radius:4px}
+.icon-picker-bottom{padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e3eaf4;flex:none}
+#iconResultSummary{font-size:11px;color:#6f8096;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#iconInsertButton{border:0;border-radius:7px;background:#2774c8;color:#fff;font-size:12px;font-weight:700;min-width:78px;padding:9px 15px}
+#iconInsertButton:disabled{opacity:.5}
+@media(max-width:650px){
+ .icon-picker{width:calc(100vw - 20px);max-height:min(72dvh,600px);border-radius:15px}
+ .icon-picker-results{grid-template-columns:repeat(6,minmax(0,1fr));padding:3px 11px 8px}
+ .icon-picker-tabs{padding:9px 11px 0}
+ .icon-cell{height:47px;font-size:27px}
+ .icon-picker-bottom{padding-bottom:max(11px,env(safe-area-inset-bottom))}
+ #iconSelectionTip{display:none}
+}
+
+/* Paintbrush options only appear with Paintbrush; Pencil is always one sharp pixel. */
+#brushOptions{gap:9px;flex:none}#brushOptions[hidden],#pencilInfo[hidden]{display:none!important}
+#brushOptions .brush-slider-label{display:flex;gap:6px;align-items:center;white-space:nowrap;font-size:11px;color:#5e6f87}
+#brushOptions input[type=range]{width:66px;accent-color:#307bca}
+#brushOptions .brush-control-value{min-width:34px;font-size:11px;font-variant-numeric:tabular-nums;color:#324e6c}
+.pencil-info{font-size:11px;color:#657994;padding-left:4px;border:0}
+@media(max-width:690px){#brushOptions{gap:6px}#brushOptions .brush-slider-label{gap:3px;font-size:10px}#brushOptions input[type=range]{width:51px}#brushOptions .brush-control-value{min-width:27px;font-size:10px}.pencil-info{font-size:10px}}
+/* Active tool opens the existing Tools window; no window-size overrides. */
+#activeToolTrigger{cursor:pointer;border-radius:4px;padding:4px 6px;margin-left:-5px;user-select:none;touch-action:manipulation}
+#activeToolTrigger:hover,#activeToolTrigger:focus-visible{background:#e7f0fc;outline:1px solid #b5cce9}
+#activeToolTrigger .toolname-chevron{font-size:13px;color:#72849a;margin-left:2px}
+#activeToolLabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+@media(max-width:650px){#activeToolTrigger{padding:6px 5px;margin-left:0;min-height:30px}#activeToolLabel{max-width:104px}}
