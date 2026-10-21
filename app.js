@@ -142,7 +142,7 @@ function blank(){let c=document.createElement('canvas');c.width=1280;c.height=72
 async function readBlob(blob,name){if(!blob||!blob.type.startsWith('image/')){toast('Please choose an image file.');return}try{const bitmap=await createImageBitmap(blob);if(bitmap.width*bitmap.height>50000000){toast('Image is too large (maximum 50 megapixels).');bitmap.close();return}let c=document.createElement('canvas');c.width=bitmap.width;c.height=bitmap.height;c.getContext('2d').drawImage(bitmap,0,0);bitmap.close();initiate(c,name||'Pasted image',true);toast('Image ready. Try the arrow, circle, or text tools.')}catch(e){console.error(e);toast('Could not read this image format.')}}
 function nearest(p){let rect=el.canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(st.base.width,(p.clientX-rect.left)/st.zoom)),y:Math.max(0,Math.min(st.base.height,(p.clientY-rect.top)/st.zoom))}}
 function rectFor(o){return{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),w:Math.abs(o.x2-o.x1),h:Math.abs(o.y2-o.y1)}}
-function getBounds(o){if(o.type==='path'||o.type==='pencilpath'||o.type==='highlight'||o.type==='brush-stroke'||o.type==='polygon'||o.type==='polyline'||o.type==='airbrush-stroke'||o.type==='eraser-stroke'){let xs=o.points.map(p=>p.x),ys=o.points.map(p=>p.y);return{x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)}}if(o.type==='text'){let lines=o.text.split('\n');let max=Math.max(...lines.map(l=>l.length),1);return{x:o.x,y:o.y-3,w:Math.max(10,max*o.fontSize*.6),h:Math.max(o.fontSize*1.25,lines.length*o.fontSize*1.3)}}if(o.type==='curve'&&o.control){const b=rectFor(o);return{x:Math.min(b.x,o.control.x),y:Math.min(b.y,o.control.y),w:Math.max(b.x+b.w,o.control.x)-Math.min(b.x,o.control.x),h:Math.max(b.y+b.h,o.control.y)-Math.min(b.y,o.control.y)}}return rectFor(o)}
+function getBounds(o){if(o.type==='path'||o.type==='pencilpath'||o.type==='highlight'||o.type==='brush-stroke'||o.type==='polygon'||o.type==='polyline'||o.type==='airbrush-stroke'||o.type==='clone-preview'||o.type==='eraser-stroke'){let xs=o.points.map(p=>p.x),ys=o.points.map(p=>p.y);return{x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)}}if(o.type==='text'){let lines=o.text.split('\n');let max=Math.max(...lines.map(l=>l.length),1);return{x:o.x,y:o.y-3,w:Math.max(10,max*o.fontSize*.6),h:Math.max(o.fontSize*1.25,lines.length*o.fontSize*1.3)}}if(o.type==='curve'&&o.control){const b=rectFor(o);return{x:Math.min(b.x,o.control.x),y:Math.min(b.y,o.control.y),w:Math.max(b.x+b.w,o.control.x)-Math.min(b.x,o.control.x),h:Math.max(b.y+b.h,o.control.y)-Math.min(b.y,o.control.y)}}return rectFor(o)}
 function objectCenter(o){const b=getBounds(o);return{x:b.x+b.w/2,y:b.y+b.h/2}}
 function spin(p,c,a){return{x:c.x+(p.x-c.x)*Math.cos(a)-(p.y-c.y)*Math.sin(a),y:c.y+(p.x-c.x)*Math.sin(a)+(p.y-c.y)*Math.cos(a)}}
 function unspin(p,o){return spin(p,objectCenter(o),-(o.rotation||0))}
@@ -344,7 +344,7 @@ function drawPaintbrush(g,o){
  const last=pts[pts.length-1],first=pts[0];
  const bounds=getBounds(o),pad=Math.ceil(width+6);
  const left=Math.floor(bounds.x-pad),top=Math.floor(bounds.y-pad),w=Math.ceil(bounds.w+pad*2+2),h=Math.ceil(bounds.h+pad*2+2);
- const key=pts.length+'|'+last.x+'|'+last.y+'|'+first.x+'|'+first.y+'|'+width+'|'+(o.hardness??80)+'|'+o.color;
+ const key=pts.length+'|'+last.x+'|'+last.y+'|'+first.x+'|'+first.y+'|'+width+'|'+(o.hardness??80)+'|'+o.color+'|'+(o.pressureEnabled?last.pressure:0);
  let cached=finishedBrushCache.get(o);
  const canUseLayer=w>0&&h>0&&w*h<=12000000&&w<=6500&&h<=6500;
  if(!cached||cached.key!==key){
@@ -352,17 +352,22 @@ function drawPaintbrush(g,o){
   const cg=canUseLayer?layer.getContext('2d'):g;
   if(canUseLayer)cg.translate(-left,-top);
   // Spacing gives continuous, circular, smoothed brush marks.
-  const spacing=Math.max(.6,width*.16),tw=tip.width/2,th=tip.height/2;
-  let prev=pts[0];cg.drawImage(tip,prev.x-tw,prev.y-th);
+  const spacing=Math.max(.6,width*.16);
+  const stamp=p=>{
+   const weight=o.pressureEnabled?Math.max(.12,Math.min(1,p.pressure||1)):1;
+   const brush=o.pressureEnabled?getBrushTip(Math.max(1,Math.round(width*weight)),o.color||'#e23535',o.hardness??80):tip;
+   cg.drawImage(brush,p.x-brush.width/2,p.y-brush.height/2);
+  };
+  let prev=pts[0];stamp(prev);
   let carry=0;
   for(let i=1;i<pts.length;i++){
    const next=pts[i],dx=next.x-prev.x,dy=next.y-prev.y,dist=Math.hypot(dx,dy);
    if(dist<.0001){prev=next;continue}
    let d=spacing-carry;
-   while(d<=dist){const t=d/dist;cg.drawImage(tip,prev.x+dx*t-tw,prev.y+dy*t-th);d+=spacing}
+   while(d<=dist){const t=d/dist;stamp({x:prev.x+dx*t,y:prev.y+dy*t,pressure:(prev.pressure||1)+((next.pressure||1)-(prev.pressure||1))*t});d+=spacing}
    carry=Math.max(0,spacing-(d-dist));prev=next;
   }
-  cg.drawImage(tip,prev.x-tw,prev.y-th);
+  stamp(prev);
   cached=canUseLayer?{key,layer,left,top}:null;
   if(cached)finishedBrushCache.set(o,cached);
  }
@@ -679,9 +684,10 @@ function fillBucket(x,y,invertMode=false){
  if(n>12000000){toast('Fill Bucket supports images up to 12 megapixels.');return}
  const mode=invertMode?(st.fillMode==='contiguous'?'global':'contiguous'):st.fillMode;
  const pixels=composite().getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;
+ const selected=pixelSelectionMask()?.mask;
  const seed=Math.max(0,Math.min(n-1,Math.floor(y)*w+Math.floor(x))),q=seed*4;
  const rr=pixels[q],gg=pixels[q+1],bb=pixels[q+2],aa=pixels[q+3],tolerance=st.fillTolerance*2.55;
- const matches=i=>{const k=i*4;return Math.max(Math.abs(pixels[k]-rr),Math.abs(pixels[k+1]-gg),Math.abs(pixels[k+2]-bb),Math.abs(pixels[k+3]-aa))<=tolerance};
+ const matches=i=>{if(selected&&!selected[i])return false;const k=i*4;return Math.max(Math.abs(pixels[k]-rr),Math.abs(pixels[k+1]-gg),Math.abs(pixels[k+2]-bb),Math.abs(pixels[k+3]-aa))<=tolerance};
  const color=st.color,cr=parseInt(color.slice(1,3),16),cg=parseInt(color.slice(3,5),16),cb=parseInt(color.slice(5,7),16);
  const mask=new Uint8Array(n);let count=0,changed=0,minX=w,minY=h,maxX=0,maxY=0;
  const write=i=>{const k=i*4;mask[i]=1;count++;if(pixels[k]!==cr||pixels[k+1]!==cg||pixels[k+2]!==cb||pixels[k+3]!==255)changed++;const xx=i%w,yy=(i/w)|0;minX=Math.min(minX,xx);minY=Math.min(minY,yy);maxX=Math.max(maxX,xx);maxY=Math.max(maxY,yy)};
@@ -898,7 +904,7 @@ function pointerDown(e){
    e.preventDefault();st.dragging=false;showText(p.x,p.y);return
  }
  else if(st.tool==='crop'){st.crop={type:'crop',x1:p.x,y1:p.y,x2:p.x,y2:p.y}}
- else{st.selected=-1;st.draft=['pen','pencil','highlight'].includes(st.tool)?{type:st.tool==='pen'?(st.brushMode==='airbrush'?'airbrush-stroke':'brush-stroke'):st.tool==='pencil'?'pencilpath':'highlight',points:[{...p,pressure:st.brushPressure&&e.pointerType==='pen'?Math.max(.1,e.pressure||.5):1}],color:st.color,width:st.tool==='pen'?st.brushSize:st.tool==='pencil'?1:st.width,...(st.tool==='pen'?{hardness:st.brushHardness,opacity:st.brushOpacity,pressureEnabled:st.brushPressure,smoothing:st.brushSmoothing}:st.tool==='pencil'?{pixelMode:true}:{opacity:st.highlighterOpacity})}:{type:st.tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:st.color,width:st.width,fill:st.fillModeShape!=='outline',fillMode:['rect','ellipse','shape'].includes(st.tool)?st.fillModeShape:'outline',strokeStyle:['line','arrow','curve'].includes(st.tool)?st.lineStrokeStyle:st.shapeStrokeStyle,shapeKind:st.shapeKind,startHead:st.headSettings[st.tool]?.start||'none',endHead:st.headSettings[st.tool]?.end||'none'}}
+ else{st.selected=-1;st.draft=['pen','pencil','highlight'].includes(st.tool)?{type:st.tool==='pen'?(st.brushMode==='airbrush'?'airbrush-stroke':'brush-stroke'):st.tool==='pencil'?'pencilpath':'highlight',points:[{...p,pressure:st.brushPressure&&e.pointerType==='pen'?Math.max(.1,e.pressure||.5):1}],color:st.color,width:st.tool==='pen'?st.brushSize:st.tool==='pencil'?1:st.width,...(st.tool==='pen'?{hardness:st.brushHardness,opacity:st.brushOpacity,pressureEnabled:st.brushPressure,smoothing:st.brushSmoothing}:st.tool==='pencil'?{pixelMode:true}:{opacity:st.highlighterOpacity})}:{type:st.tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:st.color,width:st.width,fill:st.fillModeShape!=='outline',fillMode:['rect','ellipse','shape'].includes(st.tool)?st.fillModeShape:'outline',strokeStyle:['line','arrow','curve'].includes(st.tool)?st.lineStrokeStyle:st.shapeStrokeStyle,shapeKind:st.shapeKind,startHead:st.headSettings[st.tool]?.start||'none',endHead:st.headSettings[st.tool]?.end||'none',...(st.tool==='redact'?{mode:st.redactMode,strength:st.redactStrength}:{})}}
  try{el.canvas.setPointerCapture(e.pointerId)}catch(_){}paint();
 }
 function pointerMove(e){
