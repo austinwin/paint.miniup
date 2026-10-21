@@ -336,3 +336,8 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
  #brushOptions select,#lineMode,#fillType,#redactMode{max-width:105px}
  #redactStrength{width:55px}
 }
+
+#airbrushDensityWrap[hidden]{display:none!important}
+#airbrushDensity{width:65px;accent-color:#3173c4}
+#airbrushDensityValue{min-width:28px;font-variant-numeric:tabular-nums}
+@media(max-width:680px){#airbrushDensity{width:48px}}
