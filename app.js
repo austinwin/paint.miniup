@@ -179,8 +179,8 @@ function findObject(x,y){for(let i=st.objects.length-1;i>=0;i--){const o=st.obje
  if(['line','arrow','curve'].includes(o.type)){if(o.type==='curve'&&o.control){let prev={x:o.x1,y:o.y1};for(let t=.05;t<=1.001;t+=.05){let a=1-t,pt={x:a*a*o.x1+2*a*t*o.control.x+t*t*o.x2,y:a*a*o.y1+2*a*t*o.control.y+t*t*o.y2};if(distanceToSegment(p,prev,pt)<margin)return i;prev=pt}}else if(distanceToSegment(p,{x:o.x1,y:o.y1},{x:o.x2,y:o.y2})<margin)return i;continue}
  if(['rect','ellipse','shape','polygon'].includes(o.type)&&!o.fill){const edge=Math.min(Math.abs(p.x-b.x),Math.abs(p.x-(b.x+b.w)),Math.abs(p.y-b.y),Math.abs(p.y-(b.y+b.h)));if(edge>margin&&p.x>b.x+margin&&p.y>b.y+margin&&p.x<b.x+b.w-margin&&p.y<b.y+b.h-margin)continue}
  return i}return-1}
-function handleLocations(o){let b=getBounds(o),midX=b.x+b.w/2,midY=b.y+b.h/2,c=objectCenter(o),ang=o.rotation||0;const raw=[['nw',b.x,b.y],['n',midX,b.y],['ne',b.x+b.w,b.y],['e',b.x+b.w,midY],['se',b.x+b.w,b.y+b.h],['s',midX,b.y+b.h],['sw',b.x,b.y+b.h],['w',b.x,midY],['rotate',midX,b.y-30/st.zoom]];if(o.type==='curve'&&o.control)raw.push(['control',o.control.x,o.control.y]);return raw.map(([kind,x,y])=>({kind,...spin({x,y},c,ang)}))}
-function selectedHandle(p){if(st.selected<0)return null;const o=st.objects[st.selected],hs=handleLocations(o);for(let i=hs.length-1;i>=0;i--){if(Math.hypot(p.x-hs[i].x,p.y-hs[i].y)<=Math.max(8,9/st.zoom))return hs[i].kind}return null}
+function handleLocations(o){let b=getBounds(o),midX=b.x+b.w/2,midY=b.y+b.h/2,c=objectCenter(o),ang=o.rotation||0;const raw=['line','arrow','curve'].includes(o.type)?[['endpoint-start',o.x1,o.y1],['endpoint-end',o.x2,o.y2],['rotate',midX,b.y-30/st.zoom]]:[['nw',b.x,b.y],['n',midX,b.y],['ne',b.x+b.w,b.y],['e',b.x+b.w,midY],['se',b.x+b.w,b.y+b.h],['s',midX,b.y+b.h],['sw',b.x,b.y+b.h],['w',b.x,midY],['rotate',midX,b.y-30/st.zoom]];if(o.type==='curve'&&o.control)raw.push(['control',o.control.x,o.control.y]);return raw.map(([kind,x,y])=>({kind,...spin({x,y},c,ang)}))}
+function selectedHandle(p){if(st.selected<0)return null;const o=st.objects[st.selected],hs=handleLocations(o);for(let i=hs.length-1;i>=0;i--){if(Math.hypot(p.x-hs[i].x,p.y-hs[i].y)<=Math.max(10,12/st.zoom))return hs[i].kind}return null}
 function resizeGeometry(o,original,b,scaleX,scaleY){let mid={x:b.x+b.w/2,y:b.y+b.h/2};const map=p=>({x:mid.x+(p.x-mid.x)*scaleX,y:mid.y+(p.y-mid.y)*scaleY});if(original.points){o.points=original.points.map(map)}else if(original.type==='text'){let q=map({x:original.x,y:original.y});o.x=q.x;o.y=q.y;o.fontSize=Math.max(6,Math.round(original.fontSize*Math.max(.15,Math.abs(scaleY))))}else{let a=map({x:original.x1,y:original.y1}),d=map({x:original.x2,y:original.y2});o.x1=a.x;o.y1=a.y;o.x2=d.x;o.y2=d.y;if(original.control)o.control=map(original.control)}}
 
 function moveObject(o,dx,dy){if(o.points){o.points.forEach(p=>{p.x+=dx;p.y+=dy})}else if(o.type==='text'){o.x+=dx;o.y+=dy}else{o.x1+=dx;o.x2+=dx;o.y1+=dy;o.y2+=dy;if(o.control){o.control.x+=dx;o.control.y+=dy}}}
@@ -604,7 +604,7 @@ function drawObject(g,o){g.save();if(o.cutouts?.length){g.beginPath();g.rect(0,0
   o.text.split('\n').forEach((line,i)=>g.fillText(line,o.x,o.y+i*o.fontSize*1.3))
  }else{let b=o.type==='polygon'?getBounds(o):rectFor(o);if(o.type==='icon'){drawIconObject(g,o)}else if(o.type==='redact'){g.fillStyle='#131313';g.fillRect(b.x,b.y,b.w,b.h)}else if(o.type==='rect'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.rect(b.x,b.y,b.w,b.h);fillShapePattern(g,o,b);g.stroke()}else if(o.type==='shape'||o.type==='polygon'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);drawShapePath(g,o);fillShapePattern(g,o,b);g.stroke()}else if(o.type==='ellipse'){applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.ellipse(b.x+b.w/2,b.y+b.h/2,Math.max(.1,b.w/2),Math.max(.1,b.h/2),0,0,Math.PI*2);fillShapePattern(g,o,b);g.stroke()}else if(['arrow','line','curve'].includes(o.type)){const cp=o.control||{x:(o.x1+o.x2)/2,y:(o.y1+o.y2)/2};applyStrokePreset(g,o.strokeStyle||'solid',o.width||4);g.beginPath();g.moveTo(o.x1,o.y1);if(o.type==='curve')g.quadraticCurveTo(cp.x,cp.y,o.x2,o.y2);else g.lineTo(o.x2,o.y2);g.stroke();g.setLineDash([]);const h1=o.startHead||'none',h2=o.endHead||(o.type==='arrow'?'arrow':'none');drawLineHead(g,o.x1,o.y1,o.type==='curve'?Math.atan2(o.y1-cp.y,o.x1-cp.x):Math.atan2(o.y1-o.y2,o.x1-o.x2),h1,o.width);drawLineHead(g,o.x2,o.y2,o.type==='curve'?Math.atan2(o.y2-cp.y,o.x2-cp.x):Math.atan2(o.y2-o.y1,o.x2-o.x1),h2,o.width)}}g.restore()}
 function drawLineHead(g,x,y,a,mode,width){if(!mode||mode==='none')return;const len=Math.max(13,width*4),spread=.55;g.beginPath();if(mode==='circle'){g.arc(x,y,Math.max(4,width*1.7),0,Math.PI*2);g.fill();return}g.moveTo(x-len*Math.cos(a-spread),y-len*Math.sin(a-spread));g.lineTo(x,y);g.lineTo(x-len*Math.cos(a+spread),y-len*Math.sin(a+spread));if(mode==='filled'){g.closePath();g.fill()}else g.stroke()}
-function renderSelection(){if(st.selected<0||!st.objects[st.selected])return;const o=st.objects[st.selected],b=getBounds(o),c=objectCenter(o),a=o.rotation||0;ctx.save();ctx.translate(c.x,c.y);ctx.rotate(a);ctx.translate(-c.x,-c.y);ctx.strokeStyle='#2375dc';ctx.lineWidth=1.25/st.zoom;ctx.setLineDash([5/st.zoom,4/st.zoom]);ctx.strokeRect(b.x-3/st.zoom,b.y-3/st.zoom,b.w+6/st.zoom,b.h+6/st.zoom);ctx.setLineDash([]);ctx.restore();const hs=handleLocations(o);ctx.save();hs.forEach(v=>{let sz=7/st.zoom;ctx.fillStyle=v.kind==='rotate'?'#0c9d85':v.kind==='control'?'#9457d7':'#ffffff';ctx.strokeStyle=v.kind==='control'?'#7036ad':'#2375dc';ctx.lineWidth=1.5/st.zoom;if(v.kind==='rotate'||v.kind==='control'){ctx.beginPath();ctx.arc(v.x,v.y,5.5/st.zoom,0,Math.PI*2);ctx.fill();ctx.stroke()}else{ctx.fillRect(v.x-sz/2,v.y-sz/2,sz,sz);ctx.strokeRect(v.x-sz/2,v.y-sz/2,sz,sz)}});ctx.restore()}
+function renderSelection(){if(st.selected<0||!st.objects[st.selected])return;const o=st.objects[st.selected],b=getBounds(o),c=objectCenter(o),a=o.rotation||0;ctx.save();ctx.translate(c.x,c.y);ctx.rotate(a);ctx.translate(-c.x,-c.y);ctx.strokeStyle='#2375dc';ctx.lineWidth=1.25/st.zoom;ctx.setLineDash([5/st.zoom,4/st.zoom]);ctx.strokeRect(b.x-3/st.zoom,b.y-3/st.zoom,b.w+6/st.zoom,b.h+6/st.zoom);ctx.setLineDash([]);ctx.restore();const hs=handleLocations(o);ctx.save();hs.forEach(v=>{let sz=7/st.zoom;ctx.fillStyle=v.kind==='rotate'?'#0c9d85':v.kind==='control'?'#9457d7':v.kind.startsWith('endpoint')?'#e9f2ff':'#ffffff';ctx.strokeStyle=v.kind==='control'?'#7036ad':'#2375dc';ctx.lineWidth=1.5/st.zoom;if(v.kind==='rotate'||v.kind==='control'||v.kind.startsWith('endpoint')){ctx.beginPath();ctx.arc(v.x,v.y,5.5/st.zoom,0,Math.PI*2);ctx.fill();ctx.stroke()}else{ctx.fillRect(v.x-sz/2,v.y-sz/2,sz,sz);ctx.strokeRect(v.x-sz/2,v.y-sz/2,sz,sz)}});ctx.restore()}
 
 function marqueeBounds(){
  const m=st.marquee;if(!m||!st.base)return null;
@@ -796,7 +796,7 @@ function deleteSelection(){
  return false;
 }
 // Render only the selected object or pixels into a transparent PNG.
-let internalSelection=null; // In-app fallback if the browser clipboard is unavailable.
+let internalSelection=null;let internalEditableObject=null; // Preserve editable objects for in-app paste.
 function selectedPixelsCanvas(){
  if(!st.base||!hasSelection())return null;
  let x=0,y=0,w=0,h=0,object=null;
@@ -845,7 +845,7 @@ function selectedPixelsCanvas(){
 async function copySelectedPixels(){
  const selected=selectedPixelsCanvas();
  if(!selected){toast('Select an area or object first.');return}
- internalSelection=selected;
+ internalSelection=selected;internalEditableObject=st.selected>=0?copyObj(st.objects[st.selected]):null;
  try{
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw new Error('Clipboard write unavailable');
   // Supply the PNG promise immediately to preserve user activation on mobile Safari.
@@ -889,7 +889,7 @@ function updateDraft(p,shift){if(!st.draft)return;if(st.draft.points){st.draft.p
 const rotateCursor='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M22 13a9 9 0 1 0-3 7" fill="none" stroke="#143c72" stroke-width="2.8" stroke-linecap="round"/><path d="m18 6 5 7 3-7" fill="#fff" stroke="#143c72" stroke-width="2" stroke-linejoin="round"/></svg>')+'") 14 14, crosshair';
 function cursorForHandle(handle,object){
  if(handle==='rotate')return rotateCursor;
- if(handle==='control')return 'move';
+ if(handle==='control')return 'move';if(handle==='endpoint-start'||handle==='endpoint-end')return 'crosshair';
  const angles={e:0,ne:-45,n:-90,nw:-135,w:180,sw:135,s:90,se:45};
  const deg=(angles[handle]+(object?.rotation||0)*180/Math.PI+1800)%180;
  return ['ew-resize','nwse-resize','ns-resize','nesw-resize'][Math.round(deg/45)%4];
@@ -986,6 +986,14 @@ function pointerMove(e){
   if(tr.mode==='move'){moveObject(o,dx,dy);st.moving=Math.hypot(dx,dy)>2}
   else if(tr.mode==='rotate'){const a=Math.atan2(p.y-tr.center.y,p.x-tr.center.x),b=Math.atan2(tr.origin.y-tr.center.y,tr.origin.x-tr.center.x);o.rotation=(o.rotation||0)+a-b;if(e.shiftKey)o.rotation=Math.round(o.rotation/(Math.PI/12))*(Math.PI/12);st.moving=true}
   else if(tr.mode==='control'&&o.type==='curve'){const prev=unspin(p,tr.original),orig=unspin(tr.origin,tr.original);o.control={x:tr.original.control.x+prev.x-orig.x,y:tr.original.control.y+prev.y-orig.y};st.moving=true}
+  else if(tr.mode==='endpoint-start'||tr.mode==='endpoint-end'){
+   const q=unspin(p,tr.original),start=tr.mode==='endpoint-start';
+   const anchor=start?{x:tr.original.x2,y:tr.original.y2}:{x:tr.original.x1,y:tr.original.y1};
+   let next=q;
+   if(e.shiftKey){const theta=Math.atan2(q.y-anchor.y,q.x-anchor.x),snap=Math.round(theta/(Math.PI/4))*Math.PI/4,d=Math.hypot(q.x-anchor.x,q.y-anchor.y);next={x:anchor.x+Math.cos(snap)*d,y:anchor.y+Math.sin(snap)*d}}
+   if(start){o.x1=next.x;o.y1=next.y}else{o.x2=next.x;o.y2=next.y}
+   st.moving=true;
+  }
   else{const a=spin(tr.origin,tr.center,-(o.rotation||0)),b=spin(p,tr.center,-(o.rotation||0));const sx=tr.mode.includes('w')?-1:tr.mode.includes('e')?1:0,sy=tr.mode.includes('n')?-1:tr.mode.includes('s')?1:0;const bx=Math.max(1,tr.bounds.w/2),by=Math.max(1,tr.bounds.h/2),fx=sx?Math.max(.06,(bx+sx*(b.x-a.x))/bx):1,fy=sy?Math.max(.06,(by+sy*(b.y-a.y))/by):1;resizeGeometry(o,tr.original,tr.bounds,fx,fy);st.moving=true}
   st.objects[st.selected]=o;
  }
@@ -1110,6 +1118,11 @@ el.canvas.addEventListener('pointermove',e=>{st.pastePointerInside=true;st.paste
 el.canvas.addEventListener('pointerleave',()=>{st.pastePointerInside=false});
 async function pasteButton(){try{if(!navigator.clipboard?.read)throw new Error('no-read');const items=await navigator.clipboard.read();for(const item of items){const type=item.types.find(t=>t.startsWith('image/'));if(type){const blob=await item.getType(type);await pasteImageObject(blob);return}}toast('Clipboard contains no image.')}catch(e){toast('Use Ctrl / ⌘ + V to paste, or Open to choose a file.')}}
 async function pasteSelection(){
+ if(internalEditableObject&&st.base){
+  const clone=copyObj(internalEditableObject);moveObject(clone,20,20);
+  st.objects.push(clone);setTool('select');st.selected=st.objects.length-1;
+  snapshot();updateContextOptions();paint();toast('Pasted as an editable object.');return;
+ }
  // Prefer the current OS clipboard; recover the last in-app copy if permission is denied.
  if(navigator.clipboard?.read){
   try{
@@ -1127,7 +1140,7 @@ async function pasteSelection(){
  toast('No image to paste. Use Copy Selection or copy an image first.');
 }
 function handlePaste(e){if(document.activeElement?.matches('input,textarea,select,[contenteditable]'))return;const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();const file=item.getAsFile();if(file)pasteImageObject(file)}}
-function keyHandler(e){const tag=document.activeElement?.tagName,editing=el.text.style.display==='block';if(editing){if(e.isComposing||e.keyCode===229)return;if(e.key==='Escape'){e.preventDefault();finishText(false);paint()}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishText(true)}return}if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const cmd=e.ctrlKey||e.metaKey;if(cmd){const k=e.key.toLowerCase();if(k==='tab'){e.preventDefault();cycleTab(e.shiftKey?-1:1);return}if(k==='w'){e.preventDefault();closeTab(activeTabId);return}if(k==='n'){e.preventDefault();createBlank()}if(k==='r'){e.preventDefault();showSizeDialog(e.shiftKey?'canvas':'resize')}if(k==='s'){e.preventDefault();saveProject()}if(k==='z'){e.preventDefault();restore(st.historyIdx+(e.shiftKey?1:-1))}if(k==='y'){e.preventDefault();restore(st.historyIdx+1)}if(k==='o'){e.preventDefault();el.file.click()}if(k==='c'){e.preventDefault();if(hasSelection())copySelectedPixels();else copyImage()}if(k==='i'&&e.shiftKey){e.preventDefault();invertSelection()}return}if(e.key==='Delete'||e.key==='Backspace'){if(hasSelection()){e.preventDefault();deleteSelection()}return}if(st.selected>=0&&st.objects[st.selected]&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const n=e.shiftKey?10:1;const dx=e.key==='ArrowLeft'?-n:e.key==='ArrowRight'?n:0;const dy=e.key==='ArrowUp'?-n:e.key==='ArrowDown'?n:0;moveObject(st.objects[st.selected],dx,dy);snapshot();paint();return}if(e.key==='Enter'&&st.polylineDraft){e.preventDefault();finishPolyline();return}if(e.key==='Enter'&&st.polygonDraft){e.preventDefault();finishPolygon();return}if(e.key==='Escape'){if(!popup.hidden){e.preventDefault();closeMenu();return}st.crop=null;st.draft=null;st.polygonDraft=null;st.polylineDraft=null;st.selected=-1;st.wand=null;st.marquee=null;updateContextOptions();paint();return}const tool={v:'select',w:'wand',f:'bucket',k:'picker',z:'zoom',u:'curve',n:'pencil',p:'pen',h:'pan',a:'arrow',l:'line',r:'rect',o:'ellipse',t:'text',b:'redact',c:'crop',e:'erase',s:'shape'}[e.key.toLowerCase()];if(tool){e.preventDefault();setTool(tool)}}
+function keyHandler(e){const tag=document.activeElement?.tagName,editing=el.text.style.display==='block';if(editing){if(e.isComposing||e.keyCode===229)return;if(e.key==='Escape'){e.preventDefault();finishText(false);paint()}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishText(true)}return}if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const cmd=e.ctrlKey||e.metaKey;if(cmd){const k=e.key.toLowerCase();if(k==='tab'){e.preventDefault();cycleTab(e.shiftKey?-1:1);return}if(k==='w'){e.preventDefault();closeTab(activeTabId);return}if(k==='n'){e.preventDefault();createBlank()}if(k==='r'){e.preventDefault();showSizeDialog(e.shiftKey?'canvas':'resize')}if(k==='s'){e.preventDefault();saveProject()}if(k==='z'){e.preventDefault();restore(st.historyIdx+(e.shiftKey?1:-1))}if(k==='y'){e.preventDefault();restore(st.historyIdx+1)}if(k==='o'){e.preventDefault();el.file.click()}if(k==='c'){e.preventDefault();if(hasSelection())copySelectedPixels();else copyImage()}if(k==='x'&&hasSelection()){e.preventDefault();copySelectedPixels();deleteSelection()}if(k==='i'&&e.shiftKey){e.preventDefault();invertSelection()}return}if(e.key==='Delete'||e.key==='Backspace'){if(hasSelection()){e.preventDefault();deleteSelection()}return}if(st.selected>=0&&st.objects[st.selected]&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const n=e.shiftKey?10:1;const dx=e.key==='ArrowLeft'?-n:e.key==='ArrowRight'?n:0;const dy=e.key==='ArrowUp'?-n:e.key==='ArrowDown'?n:0;moveObject(st.objects[st.selected],dx,dy);snapshot();paint();return}if(e.key==='Enter'&&st.polylineDraft){e.preventDefault();finishPolyline();return}if(e.key==='Enter'&&st.polygonDraft){e.preventDefault();finishPolygon();return}if(e.key==='Escape'){if(!popup.hidden){e.preventDefault();closeMenu();return}st.crop=null;st.draft=null;st.polygonDraft=null;st.polylineDraft=null;st.selected=-1;st.wand=null;st.marquee=null;updateContextOptions();paint();return}const tool={v:'select',w:'wand',f:'bucket',k:'picker',z:'zoom',u:'curve',n:'pencil',p:'pen',h:'pan',a:'arrow',l:'line',r:'rect',o:'ellipse',t:'text',b:'redact',c:'crop',e:'erase',s:'shape'}[e.key.toLowerCase()];if(tool){e.preventDefault();setTool(tool)}}
 // Contextual tool options. These are visible only when relevant.
 ['startHead','endHead'].forEach(id=>$('#'+id).addEventListener('change',e=>{if(st.headSettings[st.tool])st.headSettings[st.tool][id==='startHead'?'start':'end']=e.target.value;const o=st.objects[st.selected];if(o&&['line','arrow','curve'].includes(o.type)){o[id]=e.target.value;snapshot();paint()}}));
 $('#lineStyle').addEventListener('change',e=>{st.lineStrokeStyle=e.target.value;const o=st.objects[st.selected];if(o&&['line','arrow','curve'].includes(o.type)){o.strokeStyle=e.target.value;snapshot();paint()}});
@@ -1137,7 +1150,7 @@ $('#fillTolerance').addEventListener('input',e=>{st.fillTolerance=Number(e.targe
  $('#fillMode').addEventListener('change',e=>{st.fillMode=e.target.value});
  $('#wandTolerance').addEventListener('input',e=>{st.wandTolerance=Number(e.target.value);$('#wandToleranceValue').textContent=st.wandTolerance+'%';if(st.wand?.source==='wand'){let {x,y}=st.wand;wandSelection(x,y)}});
 $('#wandMode').addEventListener('change',e=>{st.wandMode=e.target.value;if(st.wand?.source==='wand'){let {x,y}=st.wand;wandSelection(x,y)}});
-$('#deleteSelectionBtn').onclick=deleteSelection;$('#deselectBtn').onclick=deselect;
+$('#deleteSelectionBtn').onclick=deleteSelection;$('#deselectBtn').onclick=deselect;$('#copySelectionBtn').onclick=copySelectedPixels;$('#cutSelectionBtn').onclick=()=>{if(hasSelection()){copySelectedPixels();deleteSelection()}};
 for(const [id,key] of [['brushMode','brushMode'],['brushSmoothing','brushSmoothing'],['eraserMode','eraserMode'],['lineMode','lineMode'],['redactMode','redactMode'],['fillType','fillType'],['gradientMode','gradientMode'],['gradientEndColor','gradientEndColor']]){
  $('#'+id).addEventListener('change',e=>{
   if(key==='lineMode'&&st.polylineDraft)finishPolyline();
