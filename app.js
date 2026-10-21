@@ -1283,6 +1283,13 @@ async function renderLibrary(){
  }
 }
 const openingProjects=new Set();
+function revealSavedProject(){
+ if(window.innerWidth<=620){
+  // The library overlays the canvas on small screens; reveal the activated image.
+  $('#panelLibrary').classList.add('hidden');
+  rememberLayout();
+ }
+}
 async function decodeSavedImage(blob){
  if(!(blob instanceof Blob))throw new Error('Saved image data is missing');
  if(typeof createImageBitmap==='function'){
@@ -1300,14 +1307,14 @@ async function decodeSavedImage(blob){
 async function openProject(id){
  if(openingProjects.has(id))return false;
  const existing=openTabs.find(tab=>stateForTab(tab)?.savedId===id);
- if(existing){activateTab(existing.id);return true}
+ if(existing){activateTab(existing.id);revealSavedProject();toast('Switched to '+stateForTab(existing).name+'.');return true}
  openingProjects.add(id);
  try{
   const record=await dbGet(id);
   if(!record){toast('Saved project not found.');return false}
   // Check again after asynchronous loading, in case another action opened this project.
   const opened=openTabs.find(tab=>stateForTab(tab)?.savedId===id);
-  if(opened){activateTab(opened.id);return true}
+  if(opened){activateTab(opened.id);revealSavedProject();return true}
   const bitmap=await decodeSavedImage(record.baseBlob);
   const image=document.createElement('canvas');image.width=bitmap.width;image.height=bitmap.height;
   image.getContext('2d').drawImage(bitmap,0,0);
@@ -1317,11 +1324,7 @@ async function openProject(id){
   st.objects=copyObj(record.objects||[]);st.savedId=record.id;
   st.history=[];st.historyIdx=-1;snapshot();st.dirty=false;
   updateContextOptions();refreshDirtyStatus();paint();
-  if(window.innerWidth<=620){
-   // On phones the floating library can cover most of the newly opened image.
-   $('#panelLibrary').classList.add('hidden');
-   rememberLayout();
-  }
+  revealSavedProject();
   toast('Opened '+record.name+' in a tab.');
   return true;
  }catch(error){
