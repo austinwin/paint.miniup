@@ -872,7 +872,7 @@ function showText(x,y,existing){
  if(!st.base)return;finishText(true);const field=el.text;let value='';
  if(existing>=0){let o=st.objects[existing];value=o.text;x=o.x;y=o.y;
  st.editingOriginal={object:copyObj(o),index:existing};
- st.fontSize=o.fontSize;st.fontFamily=o.fontFamily||'Arial';st.fontBold=!!o.bold;st.textMode=o.labelMode||'plain';st.labelBackground=o.backgroundColor||'#ffffff';st.labelBorder=o.labelBorder!==false;$('#textMode').value=st.textMode;$('#textBackground').value=st.labelBackground;$('#textBorder').checked=st.labelBorder;updateTextOptions();setColor(o.color);
+ st.fontSize=o.fontSize;st.fontFamily=o.fontFamily||'Arial';st.fontBold=!!o.bold;st.textMode=o.labelMode||'plain';st.labelBackground=o.backgroundColor||'#ffffff';st.labelBorder=o.labelBorder!==false;$('#textMode').value=st.textMode;$('#textBackground').value=st.labelBackground;$('#textBorder').checked=st.labelBorder;updateTextOptions();st.color=o.color;$('#topColor').value=o.color;syncColorWheel(o.color);
  $('#fontSize').value=st.fontSize;$('#fontFamily').value=st.fontFamily;$('#boldBtn').style.background=st.fontBold?'#d9eafb':'';
  st.objects.splice(existing,1);st.selected=-1;updateContextOptions()}
  field.dataset.x=x;field.dataset.y=y;
