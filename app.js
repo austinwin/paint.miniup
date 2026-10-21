@@ -1207,10 +1207,62 @@ $('#openBtn').onclick=()=>el.file.click();
 $('#exportBtn').onclick=()=>{$('#exportFormat').value='png';exportImage()};$('#exportJpgBtn').onclick=()=>{$('#exportFormat').value='jpeg';exportImage()};
 $('#saveCopyBtn').onclick=()=>saveProject(true);
 $('#librarySave').onclick=saveProject;
-async function saveProject(asCopy=false){if(!st.base)return;finishText(true);let old=st.name||'Untitled canvas';const value=await askProjectName(asCopy?'Save as new copy':'Save project in this browser',asCopy?old+' copy':old);if(value===null)return;let name=value.trim().slice(0,80)||'Untitled canvas';try{let baseBlob=await toBlob(st.base);const preview=projectThumb(composite());let id=(!asCopy&&st.savedId)||('project-'+Date.now()+'-'+Math.random().toString(36).slice(2,8));let record={id,name,width:st.base.width,height:st.base.height,updatedAt:Date.now(),baseBlob,objects:copyObj(st.objects),thumbnail:preview};await dbPut(record);st.name=name;st.savedId=id;st.dirty=false;updateUI();refreshDirtyStatus();renderLibrary();toast('Saved to this browser. You can reopen and edit it later.')}catch(err){console.error(err);toast('Browser storage failed or is full. Export the image instead.')}}
+async function saveProject(asCopy=false){
+ if(!st.base)return;
+ finishText(true);
+ const targetId=activeTabId,old=st.name||'Untitled canvas';
+ const value=await askProjectName(asCopy?'Save as new copy':'Save project in this browser',asCopy?old+' copy':old);
+ if(value===null)return;
+ // A save dialog belongs to the tab from which it was opened.
+ if(activeTabId!==targetId){toast('Switch back to the original tab before saving.');return}
+ const name=value.trim().slice(0,80)||'Untitled canvas';
+ const revision=st.revision,base=st.base,objects=copyObj(st.objects),preview=projectThumb(composite());
+ const id=(!asCopy&&st.savedId)||('project-'+Date.now()+'-'+Math.random().toString(36).slice(2,8));
+ try{
+  const baseBlob=await toBlob(base);
+  await dbPut({id,name,width:base.width,height:base.height,updatedAt:Date.now(),baseBlob,objects,thumbnail:preview});
+  const tab=openTabs.find(entry=>entry.id===targetId);
+  if(tab){
+   const target=stateForTab(tab);
+   target.name=name;target.savedId=id;
+   // Edits made while IndexedDB was writing must remain marked unsaved.
+   if(target.revision===revision)target.dirty=false;
+  }
+  updateUI();refreshDirtyStatus();renderLibrary();
+  toast('Saved '+name+' to this browser.');
+ }catch(err){
+  console.error(err);toast('Browser storage failed or is full. Export the image instead.');
+ }
+}
 async function renderLibrary(){const list=$('#projectList');if(!list)return;try{let projects=(await dbAll()).sort((a,b)=>b.updatedAt-a.updatedAt);$('#libraryCount').textContent=projects.length+' saved';list.innerHTML='';if(!projects.length){list.innerHTML='<div class="no-projects">No saved images yet.<br>Click <b>Save canvas</b> to store this work in your browser.</div>';return}for(const item of projects){let card=document.createElement('div');card.className='project';let img=document.createElement('img');img.className='thumb';img.src=item.thumbnail;img.alt='Preview';let open=document.createElement('button');open.className='openproj';let n=document.createElement('div');n.className='project-name';n.textContent=item.name;let d=document.createElement('div');d.className='project-time';d.textContent=new Date(item.updatedAt).toLocaleDateString()+' · '+item.width+' × '+item.height;open.append(n,d);open.title='Open '+item.name;open.onclick=()=>openProject(item.id);let del=document.createElement('button');del.className='delproj';del.textContent='×';del.title='Delete '+item.name;del.onclick=()=>deleteProject(item.id,item.name);card.append(img,open,del);list.appendChild(card)}}catch(e){console.error(e);list.innerHTML='<div class="no-projects">Browser storage is unavailable.<br>Export images as files instead.</div>';$('#libraryCount').textContent='Unavailable'}}
-async function openProject(id){if(!canReplace())return;try{let record=await dbGet(id);if(!record){toast('Project not found.');return}const bitmap=await createImageBitmap(record.baseBlob);let c=document.createElement('canvas');c.width=bitmap.width;c.height=bitmap.height;c.getContext('2d').drawImage(bitmap,0,0);bitmap.close();initiate(c,record.name);st.objects=copyObj(record.objects||[]);st.savedId=record.id;st.history=[];st.historyIdx=-1;snapshot();st.dirty=false;refreshDirtyStatus();paint();requestAnimationFrame(fitZoom);toast('Opened '+record.name+' from this browser.')}catch(e){console.error(e);toast('Unable to open this saved project.')}}
-async function deleteProject(id,name){if(!confirm('Delete "'+name+'" from this browser? This cannot be undone.'))return;try{await dbDelete(id);if(st.savedId===id){st.savedId=null;st.dirty=true;refreshDirtyStatus()}await renderLibrary();toast('Saved project deleted.')}catch(e){console.error(e);toast('Could not delete this project.')}}
+async function openProject(id){
+ const alreadyOpen=openTabs.find(tab=>stateForTab(tab)?.savedId===id);
+ if(alreadyOpen){activateTab(alreadyOpen.id);return}
+ try{
+  const record=await dbGet(id);
+  if(!record){toast('Project not found.');return}
+  const bitmap=await createImageBitmap(record.baseBlob);
+  const image=document.createElement('canvas');image.width=bitmap.width;image.height=bitmap.height;
+  image.getContext('2d').drawImage(bitmap,0,0);bitmap.close();
+  // A project from the saved library joins the existing images, preserving them.
+  initiate(image,record.name,false);
+  st.objects=copyObj(record.objects||[]);st.savedId=record.id;
+  st.history=[];st.historyIdx=-1;snapshot();st.dirty=false;
+  updateContextOptions();refreshDirtyStatus();paint();
+  toast('Opened '+record.name+' in a new tab.');
+ }catch(err){console.error(err);toast('Unable to open this saved project.')}
+}
+async function deleteProject(id,name){
+ if(!confirm('Delete "'+name+'" from this browser? This cannot be undone.'))return;
+ try{
+  await dbDelete(id);
+  for(const tab of openTabs){
+   const data=stateForTab(tab);
+   if(data?.savedId===id){data.savedId=null;data.dirty=true}
+  }
+  refreshDirtyStatus();await renderLibrary();toast('Saved project deleted. Open tabs remain editable.');
+ }catch(e){console.error(e);toast('Could not delete this project.')}
+}
 window.addEventListener('beforeunload',e=>{if(openTabs.some(tab=>stateForTab(tab)?.dirty)){e.preventDefault();e.returnValue=''}});
 window.addEventListener('resize',()=>{requestAnimationFrame(()=>applyPositions())});
 // Keep project status and sidebar history synchronized with snapshot events.
