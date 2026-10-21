@@ -48,9 +48,14 @@ function renderTabs(){
   select.setAttribute('role','tab');select.setAttribute('aria-selected',String(active));
   select.setAttribute('aria-controls','canvasStage');select.tabIndex=active?0:-1;
   select.title=data.name+(data.dirty?' (unsaved changes)':'');
-  const thumb=document.createElement('canvas');thumb.className='document-tab-preview';
-  thumb.width=58;thumb.height=46;thumb.setAttribute('aria-hidden','true');
-  paintTabThumbnail(thumb,data.base);
+  // Cache previews per base canvas so a large image isn't downscaled on every edit.
+  if(tab.thumbnailBase!==data.base){
+   const preview=document.createElement('canvas');preview.width=58;preview.height=46;
+   paintTabThumbnail(preview,data.base);
+   tab.thumbnailUrl=preview.toDataURL('image/png');tab.thumbnailBase=data.base;
+  }
+  const thumb=document.createElement('img');thumb.className='document-tab-preview';
+  thumb.alt='';thumb.setAttribute('aria-hidden','true');thumb.src=tab.thumbnailUrl;
   const label=document.createElement('span');label.className='document-tab-name';label.textContent=data.name||'Untitled';
   select.append(thumb,label);
   if(data.dirty){const dot=document.createElement('span');dot.className='document-tab-dirty';dot.title='Unsaved changes';dot.setAttribute('aria-label','Unsaved changes');select.append(dot)}
@@ -1228,6 +1233,8 @@ async function saveProject(asCopy=false){
   if(tab){
    const target=stateForTab(tab);
    target.name=name;target.savedId=id;
+   // A project rename should persist when stepping through Undo/Redo.
+   target.history.forEach(step=>{step.name=name});
    // Edits made while IndexedDB was writing must remain marked unsaved.
    if(target.revision===revision)target.dirty=false;
   }
