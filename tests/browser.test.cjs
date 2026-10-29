@@ -47,10 +47,40 @@ async function main(){
    const mode=document.querySelector('#textMode');mode.value='label';mode.dispatchEvent(new Event('change',{bubbles:true}));
    const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=window.PaintDebug.state.zoom;
    c.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0,buttons:1,pointerId:9,pointerType:'mouse',clientX:r.left+8*z,clientY:r.top+8*z}));
-   const field=document.querySelector('#textEntry');field.value='Inspect valve';
-   document.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Enter'}));
   });
-  assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.find(x=>x.type==='text')?.labelMode),'label','Editable label mode');
+  const textField=page.locator('#textEntry');
+  await textField.fill('Inspect valve');
+  await textField.press('Enter');
+  await page.keyboard.type('Check pressure');
+  assert.deepEqual((await textField.inputValue()).split(String.fromCharCode(10)),['Inspect valve','Check pressure'],'Enter creates a new line');
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.filter(x=>x.type==='text').length),0,'Enter does not finish text');
+  await page.locator('#italicBtn').click();
+  await page.locator('#underlineBtn').click();
+  await page.locator('.text-align-btn[data-align="center"]').click();
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#textEntry')).display),'block','Formatting controls keep editor open');
+  await page.locator('#finishTextBtn').click();
+  const annotation=await page.evaluate(()=>window.PaintDebug.state.objects.find(x=>x.type==='text'));
+  assert.equal(annotation.labelMode,'label','Editable label mode');
+  assert.deepEqual(annotation.text.split(String.fromCharCode(10)),['Inspect valve','Check pressure'],'Multiline text saved');
+  assert.equal(annotation.italic,true,'Italic text saved');
+  assert.equal(annotation.underline,true,'Underline text saved');
+  assert.equal(annotation.align,'center','Centered text saved');
+  const countText=await page.evaluate(()=>window.PaintDebug.state.objects.filter(x=>x.type==='text').length);
+  await page.evaluate(()=>{
+   const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=window.PaintDebug.state.zoom;
+   c.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0,buttons:1,pointerId:11,pointerType:'mouse',clientX:r.left+75*z,clientY:r.top+50*z}));
+  });
+  await textField.fill('Temporary');
+  await page.locator('#cancelTextBtn').click();
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.filter(x=>x.type==='text').length),countText,'Cancel discards pending text');
+  await page.evaluate(()=>{
+   const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=window.PaintDebug.state.zoom;
+   c.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0,buttons:1,pointerId:12,pointerType:'mouse',clientX:r.left+70*z,clientY:r.top+48*z}));
+  });
+  await textField.fill('Finish by outside click');
+  await page.locator('#docTitle').click();
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.filter(x=>x.type==='text').length),countText+1,'Clicking outside commits text');
+  assert.equal(await page.evaluate(()=>document.querySelector('#textMoveHandle').hidden),true,'Move handle hides after committing');
 
   await page.evaluate(()=>{
    const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=window.PaintDebug.state.zoom;
