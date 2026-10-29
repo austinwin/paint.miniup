@@ -95,6 +95,59 @@ async function main(){
   });
   assert.ok(await page.evaluate(()=>window.PaintDebug.state.objects.some(x=>x.type==='arrow'&&x.x2>55)),'Arrow endpoint is editable');
 
+  // Paint.NET-like Shapes tool: retain transform handles until Finish.
+  const shapeResults=await page.evaluate(()=>{
+   const st=window.PaintDebug.state,c=document.querySelector('#canvas');
+   const rect=c.getBoundingClientRect(),z=st.zoom;
+   function emit(type,x,y,id=70){
+    c.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,button:0,buttons:type==='pointerup'?0:1,pointerId:id,pointerType:'mouse',clientX:rect.left+x*z,clientY:rect.top+y*z}));
+   }
+   function choose(kind){
+    const select=document.querySelector('#shapeType');select.value=kind;
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+   }
+   window.PaintDebug.setTool('shape');choose('rectangle');
+   emit('pointerdown',12,12);emit('pointermove',68,38);emit('pointerup',68,38);
+   const shape=st.objects.at(-1),editSelected=st.selected===st.objects.length-1&&!document.querySelector('#finishShapeBtn').hidden;
+   document.querySelector('#finishShapeBtn').click();
+   const finished=st.selected===-1;
+   choose('custom');
+   for(const [x,y] of [[12,12],[46,10],[64,39],[20,47]])emit('pointerdown',x,y);
+   const previews=st.polygonDraft?.points.length;
+   document.querySelector('#finishShapeBtn').click();
+   const polygon=st.objects.at(-1),polygonFinished=st.selected===-1;
+   choose('customSmooth');
+   const method=document.querySelector('#shapeMethod');method.value='trace';method.dispatchEvent(new Event('change',{bubbles:true}));
+   emit('pointerdown',17,20,71);
+   for(const [x,y] of [[30,11],[44,16],[65,29],[53,48],[32,53],[17,36]])emit('pointermove',x,y,71);
+   emit('pointerup',17,36,71);
+   const smooth=st.objects.at(-1);
+   document.querySelector('#finishShapeBtn').click();
+   window.PaintDebug.setTool('curve');
+   const select=document.querySelector('#curveMode');select.value='bezier';select.dispatchEvent(new Event('change',{bubbles:true}));
+   emit('pointerdown',12,55,72);emit('pointermove',78,55,72);emit('pointerup',78,55,72);
+   const curve=st.objects.at(-1),before=curve.controls?.[0].y;
+   const x=curve.controls[0].x,y=curve.controls[0].y;
+   emit('pointerdown',x,y,73);emit('pointermove',x,y-18,73);emit('pointerup',x,y-18,73);
+   const edited=st.objects.at(-1).controls[0].y;
+   select.value='spline';select.dispatchEvent(new Event('change',{bubbles:true}));
+   const spline=st.objects.at(-1).curveMode;
+   document.querySelector('#finishShapeBtn').click();
+   return{shapeType:shape.type,editSelected,finished,previews,polygonPoints:polygon.points?.length,polygonFinished,smoothType:smooth.type,smoothPoints:smooth.points?.length,smoothEnabled:smooth.smooth,curveType:curve.type,controls:curve.controls?.length,before,edited,spline,curveFinished:st.selected===-1};
+  });
+  assert.equal(shapeResults.shapeType,'shape','Shape created as an editable object');
+  assert.ok(shapeResults.editSelected,'Shapes remain in handle-edit mode');
+  assert.ok(shapeResults.finished,'Finish exits the edit mode');
+  assert.equal(shapeResults.previews,4,'Arbitrary polygon collects clicked vertices');
+  assert.ok(shapeResults.polygonPoints>=4&&shapeResults.polygonFinished,'Polygon is closed and committed');
+  assert.equal(shapeResults.smoothType,'polygon','Freeform curve produces a polygon shape');
+  assert.ok(shapeResults.smoothEnabled&&shapeResults.smoothPoints>=3,'Drag-traced freeform curve has a smooth closed outline');
+  assert.equal(shapeResults.curveType,'curve','Curve object exists');
+  assert.equal(shapeResults.controls,2,'Curve has both Bézier control nubs');
+  assert.ok(shapeResults.edited<shapeResults.before-10,'Dragging control nub changes curvature');
+  assert.equal(shapeResults.spline,'spline','Spline and Bézier modes can be switched on live curve');
+  assert.ok(shapeResults.curveFinished,'Curve Finish exits live edit mode');
+
   // Undo / Redo after selection.
   const count=await page.evaluate(()=>window.PaintDebug.state.historyIdx);
   await page.evaluate(()=>{
