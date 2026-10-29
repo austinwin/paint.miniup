@@ -95,6 +95,18 @@ async function main(){
   });
   assert.ok(await page.evaluate(()=>window.PaintDebug.state.objects.some(x=>x.type==='arrow'&&x.x2>55)),'Arrow endpoint is editable');
 
+  // Connector labels belong to the vector arrow and render during PNG export.
+  const arrowCaption=await page.evaluate(()=>{
+   window.PaintDebug.setTool('arrow');
+   const field=document.querySelector('#lineCaption');field.value='Opens details';field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new Event('change',{bubbles:true}));
+   const st=window.PaintDebug.state,c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=st.zoom;
+   const emit=(type,x,y)=>c.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,button:0,buttons:type==='pointerup'?0:1,pointerId:56,pointerType:'mouse',clientX:r.left+x*z,clientY:r.top+y*z}));
+   emit('pointerdown',14,22);emit('pointermove',78,31);emit('pointerup',78,31);
+   window.PaintDebug.composite();
+   return{type:st.objects.at(-1).type,label:st.objects.at(-1).label};
+  });
+  assert.deepEqual(arrowCaption,{type:'arrow',label:'Opens details'},'Arrow label is editable and exported');
+
   // Paint.NET-like Shapes tool: retain transform handles until Finish.
   const shapeResults=await page.evaluate(()=>{
    const st=window.PaintDebug.state,c=document.querySelector('#canvas');

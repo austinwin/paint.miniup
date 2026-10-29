@@ -411,3 +411,9 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
  #noteOptions .options-note{display:none}
  .text-entry{max-width:calc(100vw - 28px)}
 }
+
+/* Short labels stay visually attached to drawn arrows and flow connectors. */
+#lineCaptionWrap{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:11px;color:#53647c}
+.connector-caption{height:27px;min-width:100px;max-width:150px;width:120px;border:1px solid #b8c7d9;border-radius:5px;background:#fff;padding:3px 7px;font:inherit;color:#253950}
+.connector-caption:focus{outline:2px solid #72a7e2;outline-offset:0}
+@media(max-width:700px){.connector-caption{width:100px;max-width:110px;height:30px}#lineCaptionWrap{font-size:10px}}
