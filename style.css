@@ -460,3 +460,15 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
  .layer-actions button{height:34px}
  #layersToggleBtn{padding:0 5px;min-width:56px;font-size:11px}
 }
+
+/* Optional Extras menu: powerful utilities stay out of the main tool strip. */
+.menupopup[data-name="Extras"]{width:min(255px,calc(100vw - 16px));max-height:min(590px,calc(100vh - 24px));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.menupopup .extras-heading{font-size:9px;font-weight:760;letter-spacing:.11em;color:#72859e;padding:12px 10px 4px;border-top:1px solid #e4eaf2;margin-top:4px}
+.menupopup .extras-heading:first-child{border-top:0;margin-top:0;padding-top:6px}
+.menupopup button:disabled{opacity:.43;cursor:default}
+.menupopup button:disabled:hover{background:transparent;color:inherit}
+.layer-selection-actions{display:flex;align-items:center;gap:6px}
+.layer-selection-actions button{flex:1;min-width:0;height:30px;background:#eaf3ff;border:1px solid #b2cbed;border-radius:5px;color:#2266a9;font-size:10px;font-weight:650;padding:0 5px;cursor:pointer;touch-action:manipulation}
+.layer-selection-actions button:hover:not(:disabled){background:#dcecff}
+.layer-selection-actions button:disabled{opacity:.43;cursor:default}
+@media(max-width:680px){.menupopup[data-name="Extras"]{max-height:calc(100vh - 65px)}.menurow{gap:1px}.menurow .menu{padding-left:5px;padding-right:5px;font-size:11px}}

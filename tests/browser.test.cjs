@@ -333,6 +333,57 @@ async function main(){
   assert.equal(await page.evaluate(()=>window.PaintDebug.state.layers.find(l=>l.id==='sketch')?.name),'Wireframes','Layers preserved in saved projects');
   assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.filter(o=>o.layerId==='sketch').length),4,'Layer object assignments preserved');
 
+
+  // Extras menu exposes advanced actions without enlarging the everyday toolbar.
+  await page.locator('#menuExtras').click();
+  assert.equal(await page.locator('.menupopup:not([hidden]) .extras-heading').count(),4,'Extras commands are grouped');
+  assert.ok(await page.locator('.menupopup:not([hidden])').getByText('Export annotations (transparent PNG)').isVisible(),'Transparent export is discoverable');
+  await page.locator('#menuExtras').click();
+
+  const extraLayers=await page.evaluate(()=>{
+   const api=window.PaintDebug;api.createBlank();const s=api.state;
+   for(const [x,y,color] of [[10,10,'#cc0000'],[45,20,'#00cc00'],[105,35,'#0000cc']]){
+    s.objects.push({type:'rect',layerId:'sketch',x1:x,y1:y,x2:x+20,y2:y+20,fill:true,fillMode:'filled',color,width:2});
+   }
+   api.setTool('select');api.selectObjects([0,1]);
+   const target=api.selectionToNewLayer(false);
+   const moved=s.objects.length===3&&s.objects[0].layerId===target&&s.objects[1].layerId===target&&s.objects[2].layerId==='sketch';
+   const copyId=api.selectionToNewLayer(true);
+   const copied=s.objects.length===5&&s.objects.filter(o=>o.layerId===copyId).length===2;
+   api.layerToEdge('bottom');const bottom=s.layers[1].id===copyId;
+   api.lockOtherLayers();const locked=s.layers.filter(l=>l.id!==copyId&&l.id!=='background').every(l=>l.locked);
+   api.unlockDrawingLayers();const unlocked=s.layers.filter(l=>l.id!=='background').every(l=>!l.locked)&&s.layers[0].locked;
+   api.setLayerValue(copyId,'visible',false);api.showAllLayers();
+   const shown=s.layers.every(l=>l.visible)&&!s.soloLayerId;
+   api.addLayer('Unused');
+   const removed=api.removeEmptyLayers()>=1;
+   const before=s.layers.length;const pair=api.prepareAnnotationLayers();
+   const setup=pair.length===2&&s.layers.findIndex(l=>l.id===pair[1])>s.layers.findIndex(l=>l.id===pair[0]);
+   api.prepareAnnotationLayers();const idempotent=s.layers.length===before+1;
+   return {moved,copied,bottom,locked,unlocked,shown,removed,setup,idempotent,
+    menuExists:!!document.querySelector('#menuExtras'),
+    panelButtons:!!document.querySelector('#layerSelectionNew')&&!!document.querySelector('#layerSelectionCopy')};
+  });
+  for(const [key,value] of Object.entries(extraLayers))assert.ok(value,'Extras layer operation: '+key);
+
+  const arranged=await page.evaluate(()=>{
+   const api=window.PaintDebug;api.createBlank();const s=api.state;
+   const geometries=[[10,50],[48,60],[110,85]];
+   geometries.forEach(([x,y])=>s.objects.push({type:'rect',layerId:'sketch',x1:x,x2:x+20,y1:y,y2:y+20,color:'#333333',width:1,fill:false}));
+   api.setTool('select');api.selectObjects([0,1,2]);
+   const aligned=api.alignSelection('top')&&s.objects.every(o=>o.y1===50);
+   const distributed=api.distributeSelection('horizontal');
+   const centers=s.objects.map(o=>(o.x1+o.x2)/2);
+   const evenlySpaced=distributed&&Math.abs((centers[1]-centers[0])-(centers[2]-centers[1]))<.0001;
+   const compositePixel=[...api.composite().getContext('2d').getImageData(200,200,1,1).data];
+   const toggled=api.toggleSketchGrid();
+   const unchanged=[...api.composite().getContext('2d').getImageData(200,200,1,1).data].every((v,i)=>v===compositePixel[i]);
+   const rgba=api.annotationsCanvas().getContext('2d').getImageData(200,200,1,1).data;
+   const transparent=rgba[3]===0;
+   return{aligned,evenlySpaced,toggled,unchanged,transparent};
+  });
+  for(const [key,value] of Object.entries(arranged))assert.ok(value,'Extras arrangement/export behavior: '+key);
+
   // Share is handled by the browser when available, with a PNG File.
   await page.evaluate(()=>{
    navigator.canShare=()=>true;

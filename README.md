@@ -60,3 +60,17 @@ Click **▤ Layers** in the toolbar (or **Windows → Layers**) to open a separa
 Pasted screenshots become their own editable **Screenshot** layer beneath the current drawing layer. Adjust the image, then lock its layer to draw notes and arrows on top. The editor still works without opening the Layers panel: ordinary drawing goes to the active Sketch layer.
 
 **Layers are saved** in browser projects, along with visibility, lock state, order, opacity, and object assignments; Undo/Redo also restores layer changes. Export combines only visible layers. Destructive image transforms and Flatten create a new raster background from the visible result; use Undo to recover editable layers.
+
+## Extras: more power, without more toolbar clutter
+
+The **Extras** menu groups useful optional actions; the regular drawing tools stay unchanged.
+
+**Sketching:** Prepare Sketch + Notes layers with one click (safe to repeat), or toggle a 32-pixel on-screen alignment grid. The grid is only a visual aid and never appears in exports.
+
+**Arrange selected objects:** Align left edges, horizontal centers, or top edges; distribute three or more objects evenly horizontally or vertically. Selection may span multiple unlocked layers.
+
+**More layer operations:** Move or copy a selection into its own new layer; bring the active layer all the way to the top or bottom; lock the other drawing layers (the image background stays protected); unlock drawing layers; show all layers; and remove empty non-default layers. The Layers panel also provides **Selection → new layer** and **Copy → new layer** buttons.
+
+**Export:** Export just the selected objects/area as a trimmed PNG or export visible annotations to a transparent PNG without the Background layer. The usual Export PNG still includes the visible background and all visible layers. Hidden layers and the on-screen grid are excluded.
+
+For advanced commands, use the Extras menu. Most users can ignore it until they need these operations. The layer panel can be opened from the toolbar or with Ctrl/⌘ + Shift + L.

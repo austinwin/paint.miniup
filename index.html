@@ -42,6 +42,7 @@
   <button type="button" class="menu" id="menuEdit">Edit ▾</button>
   <button type="button" class="menu" id="menuView">View ▾</button>
   <button type="button" class="menu" id="menuImage">Image ▾</button>
+  <button type="button" class="menu" id="menuExtras">Extras ▾</button>
   <button type="button" class="menu" id="menuWindows">Windows ▾</button>
  </nav>
  <span class="docname" id="docTitle">Untitled canvas</span><span id="dirtyIndicator"></span>
@@ -123,6 +124,7 @@
   <div class="layer-active"><span id="layersActiveName">Sketch</span><label>Opacity <input id="layerOpacity" type="range" min="0" max="100" value="100" step="5" aria-label="Active layer opacity"/><output id="layerOpacityValue">100%</output></label></div>
   <div class="layer-actions"><button type="button" id="layerUp" title="Move layer above">↑ Above</button><button type="button" id="layerDown" title="Move layer below">↓ Below</button><button type="button" id="layerRename" title="Rename current layer">Rename</button><button type="button" id="layerDuplicate" title="Duplicate whole layer">Duplicate</button><button type="button" id="layerSelect" title="Select all editable objects on active layer">Select all</button><button type="button" id="layerMerge" title="Merge contents down (100% opacity only)">Merge down</button><button type="button" id="layerClear" title="Clear contents of active layer">Clear</button><button type="button" id="layerDelete" title="Delete active layer and its contents">Delete</button></div>
   <div class="layer-move"><label for="layerMoveTarget">Move selection to</label><select id="layerMoveTarget" aria-label="Destination layer"></select><button type="button" id="layerMoveSelection">Move</button></div>
+  <div class="layer-selection-actions"><button type="button" id="layerSelectionNew" title="Move selected objects to a new layer">Selection → new layer</button><button type="button" id="layerSelectionCopy" title="Copy selected objects to a new layer">Copy → new layer</button></div>
   <div class="layer-help" id="layerStatus">Drag rows to reorder · Double-click to rename</div>
  </div>
 </section>

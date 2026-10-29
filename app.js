@@ -8,12 +8,12 @@ const patchImages=new Map();
 const icons={select:'select',wand:'wand',bucket:'bucket',picker:'picker',pencil:'pencil',pen:'pen',highlight:'highlight',arrow:'arrow',curve:'curve',line:'line',rect:'rectangle',ellipse:'circle',text:'text',redact:'redact',crop:'crop',erase:'eraser',shape:'shapes',zoom:'zoom',pan:'hand',icon:'sticker',clone:'clone',note:'text'};
 const names={select:'Select / move',wand:'Magic Wand',bucket:'Fill Bucket',picker:'Color Picker',pencil:'Pencil',pen:'Paintbrush',highlight:'Highlighter',arrow:'Arrow',curve:'Curve',line:'Line',rect:'Rectangle',ellipse:'Circle',text:'Text',redact:'Redact',crop:'Crop',erase:'Eraser',shape:'Shapes',zoom:'Zoom',pan:'Pan',icon:'Icon',clone:'Clone Stamp',note:'Notes & callouts'};
 const hints={select:'Tap an object to move it, or drag to select an area · Delete removes the selection',wand:'Tap matching pixels to select, then choose Delete',bucket:'Click an area to fill with the primary color. Shift reverses flood mode.',picker:'Click a pixel to sample its color into the color wheel.',pencil:'Draw a fine line with the selected thickness',pen:'Paint naturally with mouse, touch, or pen',highlight:'Drag to mark an area with transparency',arrow:'Drag to draw an arrow; start/end heads are configurable',curve:'Drag a line, then shape with two handles. Choose Bézier or Spline; Enter to finish',line:'Drag to draw a straight line',rect:'Drag to outline a rectangle',ellipse:'Drag to outline a circle or ellipse',text:'Click to type · Enter adds a line · drag the move handle · click outside to finish',redact:'Drag to cover sensitive content on export',crop:'Drag to choose the crop area, then Apply crop',erase:'Drag to erase pixels to transparency',shape:'Drag a preset, edit handles, press Enter to finish. Custom: click corners or trace a freeform shape.',zoom:'Click to zoom in, Alt-click or right-click to zoom out',pan:'Drag to pan the image without changing it',clone:'Select source with the button or Alt-click, then paint its pixels elsewhere.',icon:'Pick an emoji or Lucide icon, then insert it on the canvas',note:'Tap where an annotation belongs, then type. Numbered callouts and sticky notes stay editable.'};
-const st={base:null,objects:[],tool:'select',color:'#e23535',width:4,fontSize:28,zoom:1,history:[],historyIdx:-1,selected:-1,draft:null,crop:null,pointer:null,dragging:false,moving:false,originalObject:null,modified:false,name:'untitled',firstDraw:true,savedId:null,dirty:false,fillShapes:false,fontFamily:'Arial',fontBold:false,fontItalic:false,fontUnderline:false,fontStrike:false,textAlign:'left',headSettings:{line:{start:'none',end:'none'},arrow:{start:'none',end:'arrow'},curve:{start:'none',end:'none'}},wandTolerance:24,wandMode:'contiguous',fillTolerance:20,fillMode:'contiguous',wand:null,transform:null,panning:null,marquee:null,selectionShape:'smart',shapeKind:'rectangle',shapeMethod:'corners',curveMode:'bezier',secondaryColor:'#ffffff',polygonDraft:null,freeformTracing:false,iconPreset:{family:'emoji',emoji:'⭐',name:'Star',size:72,color:'#e23535',stroke:2},lineStrokeStyle:'solid',lineCaption:'',shapeStrokeStyle:'solid',fillModeShape:'outline',brushSize:12,brushHardness:80,brushOpacity:100,nonBrushWidth:4,brushMode:'normal',brushSmoothing:35,brushPressure:false,airbrushDensity:50,eraserMode:'hard',highlighterOpacity:28,fillType:'solid',gradientMode:'linear',gradientEndColor:'#ffffff',lineMode:'straight',redactMode:'solid',redactStrength:12,cloneSource:null,clonePicking:false,polylineDraft:null,textMode:'plain',labelBackground:'#ffffff',labelBorder:true,noteMode:'callout',noteAnchor:null,noteNumber:null,multiSelection:[],guides:[],snapEnabled:true,shapeAssist:false,layers:null,activeLayerId:'sketch',soloLayerId:null};
+const st={base:null,objects:[],tool:'select',color:'#e23535',width:4,fontSize:28,zoom:1,history:[],historyIdx:-1,selected:-1,draft:null,crop:null,pointer:null,dragging:false,moving:false,originalObject:null,modified:false,name:'untitled',firstDraw:true,savedId:null,dirty:false,fillShapes:false,fontFamily:'Arial',fontBold:false,fontItalic:false,fontUnderline:false,fontStrike:false,textAlign:'left',headSettings:{line:{start:'none',end:'none'},arrow:{start:'none',end:'arrow'},curve:{start:'none',end:'none'}},wandTolerance:24,wandMode:'contiguous',fillTolerance:20,fillMode:'contiguous',wand:null,transform:null,panning:null,marquee:null,selectionShape:'smart',shapeKind:'rectangle',shapeMethod:'corners',curveMode:'bezier',secondaryColor:'#ffffff',polygonDraft:null,freeformTracing:false,iconPreset:{family:'emoji',emoji:'⭐',name:'Star',size:72,color:'#e23535',stroke:2},lineStrokeStyle:'solid',lineCaption:'',shapeStrokeStyle:'solid',fillModeShape:'outline',brushSize:12,brushHardness:80,brushOpacity:100,nonBrushWidth:4,brushMode:'normal',brushSmoothing:35,brushPressure:false,airbrushDensity:50,eraserMode:'hard',highlighterOpacity:28,fillType:'solid',gradientMode:'linear',gradientEndColor:'#ffffff',lineMode:'straight',redactMode:'solid',redactStrength:12,cloneSource:null,clonePicking:false,polylineDraft:null,textMode:'plain',labelBackground:'#ffffff',labelBorder:true,noteMode:'callout',noteAnchor:null,noteNumber:null,multiSelection:[],guides:[],snapEnabled:true,shapeAssist:false,gridVisible:false,layers:null,activeLayerId:'sketch',soloLayerId:null};
 let toastTimer;
 
 // Multiple open images share drawing controls, but every tab owns its canvas,
 // objects, undo/redo history, selection, viewport and save/dirty state.
-const documentStateKeys=['base','objects','layers','activeLayerId','soloLayerId','history','historyIdx','name','savedId','dirty','revision','zoom',
+const documentStateKeys=['base','objects','layers','activeLayerId','soloLayerId','gridVisible','history','historyIdx','name','savedId','dirty','revision','zoom',
  'selected','multiSelection','guides','objectMarquee','draft','crop','pointer','dragging','moving','originalObject','modified','wand',
  'transform','panning','marquee','polygonDraft','freeformTracing','polylineDraft','cloneSource','clonePicking','firstDraw'];
 const openTabs=[];
@@ -139,9 +139,10 @@ function orderedObjectEntries(doc=st,editableOnly=false){
   const l=layerById(v.object.layerId,doc);return layerVisible(l,doc)&&(!editableOnly||!l.locked);
  }).sort((a,b)=>rank.get(a.object.layerId)-rank.get(b.object.layerId)||a.index-b.index);
 }
-function renderLayered(g,doc=st,draft=null){
+function renderLayered(g,doc=st,draft=null,options={}){
  ensureLayers(doc);
  for(const layer of doc.layers){
+  if(options.omitBackground&&layer.id===BASE_LAYER)continue;
   if(!layerVisible(layer,doc))continue;
   const objects=(doc.objects||[]).filter(o=>o.layerId===layer.id);if(draft&&doc.activeLayerId===layer.id)objects.push(draft);
   const opacity=Math.max(0,Math.min(1,Number(layer.opacity??100)/100));
@@ -222,6 +223,153 @@ function mergeLayerDown(id=st.activeLayerId){
 }
 
 
+
+/* Sketch-first extras: power actions stay off the everyday drawing toolbar. */
+function selectionToNewLayer(duplicate=false){
+ finishText(true);ensureLayers();
+ const ids=selectedIndexes().filter(i=>layerEditable(st.objects[i]?.layerId));
+ if(!ids.length){toast('Select one or more unlocked objects first.');return null}
+ const source=ids.map(i=>st.objects[i]),highest=Math.max(...source.map(o=>st.layers.findIndex(l=>l.id===o.layerId)));
+ const layer={id:nextLayerId(),name:duplicate?'Copied selection':'Selected objects',kind:'objects',visible:true,locked:false,opacity:100};
+ st.layers.splice(Math.max(1,highest+1),0,layer);
+ if(duplicate){
+  const groupMap=new Map();let number=Math.max(0,...st.objects.filter(o=>o.noteStyle).map(o=>o.noteNumber||0));
+  const first=st.objects.length;
+  for(const original of source){
+   const copy=copyObj(original);copy.layerId=layer.id;
+   if(copy.noteStyle)copy.noteNumber=++number;
+   if(copy.groupId){if(!groupMap.has(copy.groupId))groupMap.set(copy.groupId,nextLayerId());copy.groupId=groupMap.get(copy.groupId)}
+   st.objects.push(copy);
+  }
+  st.multiSelection=source.map((_,i)=>first+i);st.selected=st.multiSelection.at(-1);
+ }else{
+  ids.forEach(i=>st.objects[i].layerId=layer.id);
+ }
+ st.activeLayerId=layer.id;snapshot();updateContextOptions();renderLayersPanel();paint();
+ toast(duplicate?'Copied selection to a new layer.':'Moved selection to a new layer.');
+ return layer.id;
+}
+function layerToEdge(edge){
+ ensureLayers();const idx=st.layers.findIndex(l=>l.id===st.activeLayerId);
+ if(idx<1)return false;
+ const next=edge==='top'?st.layers.length-1:1;if(idx===next)return false;
+ const [layer]=st.layers.splice(idx,1);st.layers.splice(next,0,layer);
+ snapshot();renderLayersPanel();paint();return true;
+}
+function lockOtherLayers(){
+ ensureLayers();let changed=false;
+ for(const layer of st.layers){if(layer.id===st.activeLayerId||layer.id===BASE_LAYER)continue;if(!layer.locked){layer.locked=true;changed=true}}
+ if(changed){snapshot();renderLayersPanel();paint()}toast('Other drawing layers locked.');return changed;
+}
+function unlockDrawingLayers(){
+ ensureLayers();let changed=false;
+ for(const layer of st.layers){if(layer.id===BASE_LAYER)continue;if(layer.locked){layer.locked=false;changed=true}}
+ if(changed){snapshot();renderLayersPanel();paint()}toast('Drawing layers unlocked (background stays protected).');return changed;
+}
+function showAllLayers(){
+ ensureLayers();let changed=!!st.soloLayerId;st.soloLayerId=null;
+ for(const layer of st.layers)if(!layer.visible){layer.visible=true;changed=true}
+ if(changed){snapshot();renderLayersPanel();paint()}return changed;
+}
+function removeEmptyLayers(){
+ ensureLayers();const ids=new Set(st.objects.map(o=>o.layerId));
+ const before=st.layers.length;
+ st.layers=st.layers.filter(l=>l.id===BASE_LAYER||l.id==='sketch'||ids.has(l.id));
+ const count=before-st.layers.length;
+ if(!count){toast('No empty layers to remove.');return 0}
+ if(!st.layers.some(l=>l.id===st.activeLayerId))st.activeLayerId=st.layers.at(-1).id;
+ if(st.soloLayerId&&!st.layers.some(l=>l.id===st.soloLayerId))st.soloLayerId=null;
+ snapshot();renderLayersPanel();paint();toast('Removed '+count+' empty layer'+(count!==1?'s':''));return count;
+}
+function prepareAnnotationLayers(){
+ ensureLayers();finishText(true);
+ const find=name=>st.layers.find(l=>l.id!==BASE_LAYER&&l.name.toLowerCase()===name.toLowerCase());
+ let sketch=find('Sketch')||st.layers.find(l=>l.id==='sketch'),notes=find('Notes');
+ let changed=false;
+ if(!sketch){sketch={id:nextLayerId(),name:'Sketch',kind:'objects',visible:true,locked:false,opacity:100};st.layers.push(sketch);changed=true}
+ if(!notes){notes={id:nextLayerId(),name:'Notes',kind:'objects',visible:true,locked:false,opacity:100};st.layers.push(notes);changed=true}
+ if(st.layers.indexOf(notes)<st.layers.indexOf(sketch)){
+  st.layers.splice(st.layers.indexOf(notes),1);st.layers.splice(st.layers.indexOf(sketch)+1,0,notes);changed=true;
+ }
+ if(sketch.locked||!sketch.visible){sketch.locked=false;sketch.visible=true;changed=true}
+ st.activeLayerId=sketch.id;
+ if(changed)snapshot();
+ renderLayersPanel();paint();toast('Ready: Sketch below Notes. Draw freely and add callouts.');return [sketch.id,notes.id];
+}
+function alignSelection(mode){
+ const ids=selectedIndexes().filter(i=>layerEditable(st.objects[i]?.layerId));
+ if(ids.length<2){toast('Select at least two editable objects.');return false}
+ const bounds=ids.map(i=>({i,b:getBounds(st.objects[i])}));
+ const xs=bounds.map(x=>x.b.x),ys=bounds.map(x=>x.b.y);
+ const rights=bounds.map(x=>x.b.x+x.b.w),bottoms=bounds.map(x=>x.b.y+x.b.h);
+ const centerXs=bounds.map(x=>x.b.x+x.b.w/2),centerYs=bounds.map(x=>x.b.y+x.b.h/2);
+ let t=0;
+ if(mode==='left')t=Math.min(...xs);
+ if(mode==='center')t=(Math.min(...xs)+Math.max(...rights))/2;
+ if(mode==='right')t=Math.max(...rights);
+ if(mode==='top')t=Math.min(...ys);
+ if(mode==='middle')t=(Math.min(...ys)+Math.max(...bottoms))/2;
+ if(mode==='bottom')t=Math.max(...bottoms);
+ const horizontal=['left','center','right'].includes(mode);
+ let moved=false;
+ bounds.forEach(({i,b})=>{
+  let dx=0,dy=0;
+  if(horizontal)dx=t-(mode==='left'?b.x:mode==='center'?b.x+b.w/2:b.x+b.w);
+  else dy=t-(mode==='top'?b.y:mode==='middle'?b.y+b.h/2:b.y+b.h);
+  if(Math.abs(dx)>0.01||Math.abs(dy)>0.01){moveObject(st.objects[i],Math.round(dx*100)/100,Math.round(dy*100)/100);moved=true}
+ });
+ if(moved){snapshot();paint()}return moved;
+}
+function distributeSelection(axis){
+ const ids=selectedIndexes().filter(i=>layerEditable(st.objects[i]?.layerId));
+ if(ids.length<3){toast('Select three or more objects to distribute.');return false}
+ const xAxis=axis==='horizontal',middle=b=>xAxis?b.x+b.w/2:b.y+b.h/2;
+ const items=ids.map(i=>({i,b:getBounds(st.objects[i])})).sort((a,b)=>middle(a.b)-middle(b.b));
+ const first=middle(items[0].b),last=middle(items.at(-1).b);
+ if(last-first<1)return false;
+ let changed=false;
+ items.slice(1,-1).forEach(({i,b},offset)=>{
+  const delta=first+(last-first)*(offset+1)/(items.length-1)-middle(b);
+  if(Math.abs(delta)>.01){moveObject(st.objects[i],xAxis?delta:0,xAxis?0:delta);changed=true}
+ });
+ if(changed){snapshot();paint()}return changed;
+}
+function toggleSketchGrid(){
+ st.gridVisible=!st.gridVisible;paint();toast(st.gridVisible?'Grid shown (not included in export).':'Grid hidden.');return st.gridVisible;
+}
+function renderSketchGrid(){
+ if(!st.gridVisible||!st.base)return;
+ const step=32, w=st.base.width,h=st.base.height;
+ ctx.save();ctx.strokeStyle='rgba(67,105,151,.20)';ctx.lineWidth=.8/Math.max(st.zoom,.05);
+ ctx.beginPath();
+ for(let x=step;x<w;x+=step){ctx.moveTo(x,0);ctx.lineTo(x,h)}
+ for(let y=step;y<h;y+=step){ctx.moveTo(0,y);ctx.lineTo(w,y)}
+ ctx.stroke();ctx.restore();
+}
+function saveCanvasPNG(can,suffix){
+ can.toBlob(blob=>{
+  if(!blob){toast('PNG export failed.');return}
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=safeFilename()+suffix+'.png';document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);toast('PNG exported.');
+ },'image/png');
+}
+function exportSelectionPNG(){
+ finishText(true);const can=selectedPixelsCanvas();
+ if(!can){toast('Select an object or area first.');return false}
+ saveCanvasPNG(can,'-selection');return true;
+}
+function annotationsCanvas(){
+ const can=document.createElement('canvas');can.width=st.base.width;can.height=st.base.height;
+ renderLayered(can.getContext('2d'),st,null,{omitBackground:true});
+ return can;
+}
+function exportTransparentAnnotations(){
+ if(!st.base)return;finishText(true);
+ if(!st.objects.some(o=>o.layerId!==BASE_LAYER&&layerVisible(layerById(o.layerId)))){toast('No visible annotations to export.');return false}
+ saveCanvasPNG(annotationsCanvas(),'-transparent-annotations');return true;
+}
+
 function renderLayersPanel(){
  const list=$('#layerList');if(!list||!st.base)return;ensureLayers();list.replaceChildren();
  for(const layer of [...st.layers].reverse()){
@@ -270,6 +418,7 @@ function renderLayersPanel(){
  }
  if([...picker.children].some(o=>o.value===prior))picker.value=prior;
  $('#layerMoveSelection').disabled=!selectedIndexes().length||!picker.children.length;
+ $('#layerSelectionNew').disabled=!selectedIndexes().length;$('#layerSelectionCopy').disabled=!selectedIndexes().length;
  $('#layerStatus').textContent=st.layers.length+' layers · drag rows to reorder · double-click to rename';
 }
 function connectLayerControls(){
@@ -286,6 +435,7 @@ function connectLayerControls(){
  $('#layerSolo').onclick=()=>soloLayer();
  $('#layerMerge').onclick=()=>mergeLayerDown();
  $('#layerMoveSelection').onclick=()=>moveSelectionToLayer($('#layerMoveTarget').value);
+ $('#layerSelectionNew').onclick=()=>selectionToNewLayer(false);$('#layerSelectionCopy').onclick=()=>selectionToNewLayer(true);
  $('#layerOpacity').oninput=e=>{const layer=activeLayer();if(!layer)return;layer.opacity=Number(e.target.value);$('#layerOpacityValue').textContent=layer.opacity+'%';paint()};
  $('#layerOpacity').onchange=()=>{snapshot();renderLayersPanel();paint()};
 }
@@ -332,7 +482,7 @@ function setWidth(value){if(st.tool==='pencil')return;st.width=Math.max(1,Math.m
 function initiate(c,name,dirty=false){
  if(activeTabId!==null){finishText(true);stashActiveTab()}
  const id=++tabSerial;openTabs.push({id,document:null,scrollLeft:0,scrollTop:0});activeTabId=id;
- st.base=c;st.objects=[];st.layers=defaultLayers();st.activeLayerId='sketch';st.soloLayerId=null;st.selected=-1;st.multiSelection=[];st.guides=[];st.draft=null;st.crop=null;st.wand=null;
+ st.base=c;st.objects=[];st.layers=defaultLayers();st.activeLayerId='sketch';st.soloLayerId=null;st.gridVisible=false;st.selected=-1;st.multiSelection=[];st.guides=[];st.draft=null;st.crop=null;st.wand=null;
  st.pointer=null;st.dragging=false;st.moving=false;st.panning=null;st.originalObject=null;st.transform=null;st.marquee=null;st.polygonDraft=null;
  st.name=name||'untitled';st.savedId=null;st.dirty=false;st.history=[];st.historyIdx=-1;st.revision=0;st.zoom=1;
  el.work.scrollLeft=0;el.work.scrollTop=0;
@@ -1179,7 +1329,8 @@ async function copySelectedPixels(){
  }
 }
 function composite(){const out=document.createElement('canvas');out.width=st.base.width;out.height=st.base.height;renderLayered(out.getContext('2d'));return out}
-function paint(){if(!st.base)return;ctx.clearRect(0,0,st.base.width,st.base.height);renderLayered(ctx,st,st.draft);if(st.wand)ctx.drawImage(st.wand.overlay,0,0);renderSelection();drawObjectMarquee();renderGuides();paintMarquee();$('#selectionActions').hidden=!(st.wand||st.marquee||st.selected>=0);if(st.crop){let b=rectFor(st.crop);ctx.save();ctx.fillStyle='#10223d55';ctx.fillRect(0,0,st.base.width,st.base.height);ctx.clearRect(b.x,b.y,b.w,b.h);ctx.drawImage(composite(),b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);ctx.strokeStyle='#fff';ctx.lineWidth=2/st.zoom;ctx.setLineDash([8/st.zoom,5/st.zoom]);ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.restore()}updateUI();const move=$('#layerMoveSelection');if(move)move.disabled=!selectedIndexes().length||!$('#layerMoveTarget').children.length}
+function paint(){if(!st.base)return;ctx.clearRect(0,0,st.base.width,st.base.height);renderLayered(ctx,st,st.draft);renderSketchGrid();if(st.wand)ctx.drawImage(st.wand.overlay,0,0);renderSelection();drawObjectMarquee();renderGuides();paintMarquee();$('#selectionActions').hidden=!(st.wand||st.marquee||st.selected>=0);if(st.crop){let b=rectFor(st.crop);ctx.save();ctx.fillStyle='#10223d55';ctx.fillRect(0,0,st.base.width,st.base.height);ctx.clearRect(b.x,b.y,b.w,b.h);ctx.drawImage(composite(),b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);ctx.strokeStyle='#fff';ctx.lineWidth=2/st.zoom;ctx.setLineDash([8/st.zoom,5/st.zoom]);ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.restore()}updateUI();const move=$('#layerMoveSelection');if(move)move.disabled=!selectedIndexes().length||!$('#layerMoveTarget').children.length;
+ const extract=$('#layerSelectionNew'),duplicate=$('#layerSelectionCopy');if(extract){extract.disabled=!selectedIndexes().length;duplicate.disabled=!selectedIndexes().length}}
 function textIsEditing(){return el.text.style.display==='block'}
 function syncTextEditorLayout(){
  if(!textIsEditing())return;
@@ -1658,6 +1809,7 @@ el.work.addEventListener('drop',async e=>{
  await pasteImageObject(file);
 });
 function keyHandler(e){const tag=document.activeElement?.tagName,editing=el.text.style.display==='block';if(editing){if(e.isComposing||e.keyCode===229)return;if(e.key==='Escape'||(e.key==='Enter'&&(e.ctrlKey||e.metaKey))){e.preventDefault();finishText(true)}return}if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const cmd=e.ctrlKey||e.metaKey;if(cmd){const k=e.key.toLowerCase();
+ if(k==='l'&&e.shiftKey){e.preventDefault();togglePanel('panelLayers');return}
  if(k==='d'){e.preventDefault();duplicateObjects();return}
  if(k==='g'){e.preventDefault();if(e.shiftKey)ungroupObjects();else groupObjects();return}
  if(k==='a'){e.preventDefault();const ids=st.objects.map((o,i)=>['erase-region','eraser-stroke','fill-region'].includes(o.type)?-1:i).filter(i=>i>=0);selectObjects(ids);return}
@@ -1865,26 +2017,63 @@ const menus={
  Edit:[['Undo','Ctrl+Z','undo'],['Redo','Ctrl+Y','redo'],['Erase Selection','Del','delete'],['Invert Selection','Ctrl+Shift+I','invertselection'],['Copy Selection','Ctrl+C','copyselected'],['Paste Selection','Ctrl+V','pasteselection'],['Deselect','Esc','deselect'],['Select / move','V','select'],['Magic Wand','W','wand'],['Copy entire image','','copy']],
  View:[['Fit canvas','','fit'],['Zoom in','+','zin'],['Zoom out','−','zout'],['Zoom tool','Z','zoom'],['Pan tool','H','pan'],['Restore floating windows','','layout']],
  Image:[['Crop to selection','C','cropselection'],['Resize…','Ctrl+R','resizeimage'],['Canvas Size…','Ctrl+Shift+R','canvassize'],['Flip Horizontal','','flipH'],['Flip Vertical','','flipV'],['Rotate 90° Clockwise','','cw'],['Rotate 90° Counter-Clockwise','','ccw'],['Rotate 180°','','180'],['Flatten','','flatten']],
+ Extras:[
+  ['SKETCHING','','#Sketching'],
+  ['Prepare Sketch + Notes layers','','extras-setup'],
+  ['Show / hide drawing grid','','extras-grid'],
+  ['ARRANGE SELECTED','','#Arrange'],
+  ['Align left','','extras-align-left'],['Align horizontal centers','','extras-align-center'],['Align top','','extras-align-top'],
+  ['Distribute horizontally','','extras-distribute-horizontal'],['Distribute vertically','','extras-distribute-vertical'],
+  ['LAYERS','','#Layers'],
+  ['Move selection to new layer','','extras-extract'],['Copy selection to new layer','','extras-copy-layer'],
+  ['Move active layer to top','','extras-layer-top'],['Move active layer to bottom','','extras-layer-bottom'],
+  ['Lock other drawing layers','','extras-lock-others'],['Unlock drawing layers','','extras-unlock'],['Show all layers','','extras-show-all'],['Remove empty layers','','extras-prune'],
+  ['EXPORT','','#Export'],
+  ['Export selected area / objects PNG','','extras-export-selection'],['Export annotations (transparent PNG)','','extras-export-transparent']
+ ],
  Windows:[['Tools','','panelTools'],['Colors','','panelColors'],['Layers','','panelLayers'],['My images','','panelLibrary'],['History','','panelHistory'],['Reset layout','','layout']]
 };
 function closeMenu(){popup.hidden=true;document.querySelectorAll('.menu').forEach(button=>button.setAttribute('aria-expanded','false'))}
-function runMenuAction(a){closeMenu();switch(a){case 'new':createBlank();break;case 'open':el.file.click();break;case 'paste':pasteButton();break;case 'save':saveProject();break;case 'savecopy':saveProject(true);break;case 'png':$('#exportFormat').value='png';exportImage();break;case 'jpg':$('#exportFormat').value='jpeg';exportImage();break;case 'undo':restore(st.historyIdx-1);break;case 'redo':restore(st.historyIdx+1);break;case 'copy':copyImage();break;case 'share':shareImage();break;case 'select':setTool('select');break;case 'wand':setTool('wand');break;case 'bucket':setTool('bucket');break;case 'picker':setTool('picker');break;case 'delete':deleteSelection();break;case 'copyselected':copySelectedPixels();break;case 'invertselection':invertSelection();break;case 'pasteselection':pasteSelection();break;case 'deselect':deselect();break;case 'pan':setTool('pan');break;case 'zoom':setTool('zoom');break;case 'fit':fitZoom();break;case 'zin':zoomBy(1.2);break;case 'zout':zoomBy(1/1.2);break;case 'crop':setTool('crop');break;case 'cropselection':cropToSelection();break;case 'resizeimage':showSizeDialog('resize');break;case 'canvassize':showSizeDialog('canvas');break;case 'flipH':case 'flipV':case 'cw':case 'ccw':case '180':transformImage(a);break;case 'flatten':flattenImage();break;case 'layout':resetLayout();break;default:if(panelIds.includes(a))togglePanel(a)}}
+function runMenuAction(a){closeMenu();switch(a){case 'new':createBlank();break;case 'open':el.file.click();break;case 'paste':pasteButton();break;case 'save':saveProject();break;case 'savecopy':saveProject(true);break;case 'png':$('#exportFormat').value='png';exportImage();break;case 'jpg':$('#exportFormat').value='jpeg';exportImage();break;case 'undo':restore(st.historyIdx-1);break;case 'redo':restore(st.historyIdx+1);break;case 'copy':copyImage();break;case 'share':shareImage();break;case 'select':setTool('select');break;case 'wand':setTool('wand');break;case 'bucket':setTool('bucket');break;case 'picker':setTool('picker');break;case 'delete':deleteSelection();break;case 'copyselected':copySelectedPixels();break;case 'invertselection':invertSelection();break;case 'pasteselection':pasteSelection();break;case 'deselect':deselect();break;case 'pan':setTool('pan');break;case 'zoom':setTool('zoom');break;case 'fit':fitZoom();break;case 'zin':zoomBy(1.2);break;case 'zout':zoomBy(1/1.2);break;case 'crop':setTool('crop');break;case 'cropselection':cropToSelection();break;case 'resizeimage':showSizeDialog('resize');break;case 'canvassize':showSizeDialog('canvas');break;case 'flipH':case 'flipV':case 'cw':case 'ccw':case '180':transformImage(a);break;case 'flatten':flattenImage();break;case 'layout':resetLayout();break;
+ case 'extras-setup':prepareAnnotationLayers();break;
+ case 'extras-grid':toggleSketchGrid();break;
+ case 'extras-align-left':alignSelection('left');break;
+ case 'extras-align-center':alignSelection('center');break;
+ case 'extras-align-top':alignSelection('top');break;
+ case 'extras-distribute-horizontal':distributeSelection('horizontal');break;
+ case 'extras-distribute-vertical':distributeSelection('vertical');break;
+ case 'extras-extract':selectionToNewLayer(false);break;
+ case 'extras-copy-layer':selectionToNewLayer(true);break;
+ case 'extras-layer-top':layerToEdge('top');break;
+ case 'extras-layer-bottom':layerToEdge('bottom');break;
+ case 'extras-lock-others':lockOtherLayers();break;
+ case 'extras-unlock':unlockDrawingLayers();break;
+ case 'extras-show-all':showAllLayers();break;
+ case 'extras-prune':removeEmptyLayers();break;
+ case 'extras-export-selection':exportSelectionPNG();break;
+ case 'extras-export-transparent':exportTransparentAnnotations();break;
+ default:if(panelIds.includes(a))togglePanel(a)}}
 function showMenu(name,anchor){
  if(!popup.hidden&&popup.dataset.name===name){closeMenu();return}
  closeMenu();
  popup.dataset.name=name;popup.replaceChildren();
  for(const [label,key,action] of menus[name]){
+  if(action?.startsWith('#')){const heading=document.createElement('div');heading.className='extras-heading';heading.textContent=label;popup.appendChild(heading);continue}
   const button=document.createElement('button');button.type='button';
   const title=document.createElement('span'),shortcut=document.createElement('span');
   title.textContent=label;shortcut.textContent=key;shortcut.className='menu-shortcut';
   button.append(title,shortcut);
   if((action==='delete'||action==='deselect'||action==='copyselected')&&!hasSelection())button.disabled=true;
   if(action==='invertselection'&&!(st.wand||st.marquee))button.disabled=true;
+  if(['extras-extract','extras-copy-layer','extras-export-selection'].includes(action)&&!hasSelection())button.disabled=true;
+  if(['extras-align-left','extras-align-center','extras-align-top'].includes(action)&&selectedIndexes().length<2)button.disabled=true;
+  if(['extras-distribute-horizontal','extras-distribute-vertical'].includes(action)&&selectedIndexes().length<3)button.disabled=true;
+  if(['extras-layer-top','extras-layer-bottom'].includes(action)&&st.activeLayerId===BASE_LAYER)button.disabled=true;
   button.onclick=()=>runMenuAction(action);popup.appendChild(button);
  }
- const rect=anchor.getBoundingClientRect(),menuWidth=Math.min(216,window.innerWidth-16);
+ const rect=anchor.getBoundingClientRect(),menuWidth=Math.min(name==='Extras'?255:216,window.innerWidth-16);
  popup.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-menuWidth-8))+'px';
- popup.style.top=rect.bottom+'px';
+ popup.style.top=Math.min(rect.bottom,Math.max(8,window.innerHeight-Math.min(590,window.innerHeight-16)))+'px';
  anchor.setAttribute('aria-expanded','true');
  popup.hidden=false;
 }
@@ -2297,5 +2486,5 @@ window.addEventListener('resize',()=>{requestAnimationFrame(()=>applyPositions()
 syncColorWheel(st.color);refreshHistoryPanel();refreshDirtyStatus();
 
 updateUI();setHistoryButtons();blank();setTool("pen");st.dirty=false;refreshDirtyStatus();if(window.innerWidth<=620){let existingLayout=false;try{existingLayout=!!localStorage.getItem('paint-layout-v1')}catch(e){}if(!existingLayout)['panelColors','panelLibrary','panelHistory'].forEach(id=>$('#'+id).classList.add('hidden'))}loadPanelPositions();renderLibrary();
-window.PaintDebug={state:st,ensureLayers,renderLayersPanel,orderedObjectEntries,addLayer,activateLayer,setLayerValue,reorderLayer,duplicateLayer,deleteLayer,clearLayer,moveSelectionToLayer,selectLayerObjects,soloLayer,mergeLayerDown,selectObjects,selectedIndexes,duplicateObjects,groupObjects,ungroupObjects,recognizeSketch,get tabs(){return openTabs},get activeTabId(){return activeTabId},activateTab,closeTab,createBlank,blank,save:saveProject,setTool,canvas:el.canvas,composite,openProject,deleteProject,renderLibrary,liftMarquee,insideMarquee,deleteSelection,deselect,wandSelection,zoomAt,pointerDown,pointerMove,pointerUp,fillBucket,sampleColor,transformImage,flattenImage,finishPolygon,showSizeDialog};
+window.PaintDebug={state:st,selectionToNewLayer,layerToEdge,lockOtherLayers,unlockDrawingLayers,showAllLayers,removeEmptyLayers,prepareAnnotationLayers,alignSelection,distributeSelection,toggleSketchGrid,exportSelectionPNG,annotationsCanvas,exportTransparentAnnotations,ensureLayers,renderLayersPanel,orderedObjectEntries,addLayer,activateLayer,setLayerValue,reorderLayer,duplicateLayer,deleteLayer,clearLayer,moveSelectionToLayer,selectLayerObjects,soloLayer,mergeLayerDown,selectObjects,selectedIndexes,duplicateObjects,groupObjects,ungroupObjects,recognizeSketch,get tabs(){return openTabs},get activeTabId(){return activeTabId},activateTab,closeTab,createBlank,blank,save:saveProject,setTool,canvas:el.canvas,composite,openProject,deleteProject,renderLibrary,liftMarquee,insideMarquee,deleteSelection,deselect,wandSelection,zoomAt,pointerDown,pointerMove,pointerUp,fillBucket,sampleColor,transformImage,flattenImage,finishPolygon,showSizeDialog};
 })();
