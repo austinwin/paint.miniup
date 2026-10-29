@@ -191,6 +191,67 @@ async function main(){
   assert.ok(touchResult.zoomAfterPinch>touchResult.beforeZoom,'Pinch should zoom with Paintbrush selected');
   assert.equal(touchResult.afterCount,touchResult.beforeCount,'Pinch must not leave an accidental stroke');
 
+  // Sketch cleanup: opt-in classification preserves freehand drawings by default.
+  const tidied=await page.evaluate(()=>{
+   const p=(x,y)=>({x,y}),line=Array.from({length:20},(_,i)=>p(8+i*3,12+Math.sin(i)*.8));
+   const rectangle=[...Array.from({length:10},(_,i)=>p(9+i*5,9)),...Array.from({length:8},(_,i)=>p(54,9+i*5)),...Array.from({length:10},(_,i)=>p(54-i*5,44)),...Array.from({length:8},(_,i)=>p(9,44-i*5)),p(9,9)];
+   const ellipse=Array.from({length:40},(_,i)=>p(35+20*Math.cos(i*Math.PI*2/39),32+17*Math.sin(i*Math.PI*2/39)));
+   const classify=pts=>window.PaintDebug.recognizeSketch({type:'brush-stroke',points:pts,width:3,color:'#333'})?.type;
+   window.PaintDebug.setTool('pen');
+   const toggle=document.querySelector('#shapeAssist');toggle.checked=true;toggle.dispatchEvent(new Event('change',{bubbles:true}));
+   return{line:classify(line),rectangle:classify(rectangle),ellipse:classify(ellipse),enabled:window.PaintDebug.state.shapeAssist};
+  });
+  assert.deepEqual(tidied,{line:'line',rectangle:'rect',ellipse:'ellipse',enabled:true},'Conservative rough-shape cleanup');
+
+  // Numbered callout and sticky note share the multiline text editor and remain editable.
+  async function addNote(mode,x,y,message){
+   await page.evaluate(({mode,x,y})=>{
+    window.PaintDebug.setTool('note');
+    const select=document.querySelector('#noteMode');select.value=mode;select.dispatchEvent(new Event('change',{bubbles:true}));
+    const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=window.PaintDebug.state.zoom;
+    c.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0,buttons:1,pointerId:81,pointerType:'mouse',clientX:r.left+x*z,clientY:r.top+y*z}));
+   },{mode,x,y});
+   await page.locator('#textEntry').fill(message);
+   await page.locator('#finishTextBtn').click();
+  }
+  await addNote('callout',18,22,'Click here to open settings');
+  await addNote('sticky',19,44,'Keep this section simple');
+  const notes=await page.evaluate(()=>window.PaintDebug.state.objects.filter(o=>o.noteStyle).map(o=>({style:o.noteStyle,number:o.noteNumber,anchor:o.noteAnchor,text:o.text})));
+  assert.equal(notes[0].style,'callout','Callout created');
+  assert.equal(notes[0].number,1,'Callout has automatic number');
+  assert.deepEqual(notes[0].anchor,{x:18,y:22},'Marker attached to clicked point');
+  assert.equal(notes[1].style,'sticky','Sticky created');
+  assert.equal(notes[1].number,2,'Note numbering increments');
+
+  // Multi-select, group, nudge, duplicate and ungroup must operate on all selected objects.
+  const multi=await page.evaluate(()=>{
+   const dbg=window.PaintDebug,st=dbg.state,ids=st.objects.flatMap((o,i)=>o.noteStyle?[i]:[]);
+   dbg.setTool('select');dbg.selectObjects(ids);
+   document.querySelector('#groupObjectsBtn').click();
+   const grouped=!!st.objects[ids[0]].groupId&&ids.every(i=>st.objects[i].groupId===st.objects[ids[0]].groupId);
+   const before=ids.map(i=>st.objects[i].x);
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+   const moved=ids.every((i,j)=>st.objects[i].x===before[j]+1);
+   const count=st.objects.length;
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'d',ctrlKey:true,bubbles:true,cancelable:true}));
+   const duplicated=st.objects.length===count+2;
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'g',ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true}));
+   const ungrouped=dbg.selectedIndexes().every(i=>!st.objects[i].groupId);
+   return{grouped,moved,duplicated,ungrouped,count:dbg.selectedIndexes().length};
+  });
+  assert.ok(multi.grouped&&multi.moved&&multi.duplicated&&multi.ungrouped,'Editable multi-object grouping');
+  assert.equal(multi.count,2,'Duplicated group stays selected');
+
+  // Drag-and-drop screenshot creates a movable overlay, not a new document.
+  const beforeDrop=await page.evaluate(()=>window.PaintDebug.state.objects.length);
+  await page.evaluate(data=>{
+   const bytes=Uint8Array.from(atob(data.split(',')[1]),c=>c.charCodeAt(0));
+   const file=new File([bytes],'screenshot.png',{type:'image/png'}),dt=new DataTransfer();dt.items.add(file);
+   document.querySelector('#workspace').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt,clientX:100,clientY:100}));
+  },dataURL);
+  await page.waitForFunction(before=>window.PaintDebug.state.objects.length>before,beforeDrop);
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.at(-1).type),'patch','Dropped screenshot overlays the canvas');
+
   // Share is handled by the browser when available, with a PNG File.
   await page.evaluate(()=>{
    navigator.canShare=()=>true;

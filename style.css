@@ -391,3 +391,23 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
 #shapeFillColorWrap{display:inline-flex;align-items:center;gap:5px}
 #shapeFillColor{width:29px;height:26px;padding:1px;border:1px solid #c4d1e1;border-radius:4px;background:white}
 @media(max-width:700px){#shapeEditingHint{display:none!important}.shape-finish{min-height:29px}#shapeMethod{max-width:115px}}
+
+/* Sketch-first editing: lightweight notes, selection and screenshot drop feedback. */
+#noteOptions{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+#noteOptions[hidden],#sketchCleanupWrap[hidden],#groupObjectsBtn[hidden],#ungroupObjectsBtn[hidden]{display:none!important}
+#noteMode{max-width:160px}
+#sketchCleanupWrap{white-space:nowrap;align-items:center;gap:5px}
+#multiPickBtn{border:1px solid #b9c7d7;border-radius:5px;white-space:nowrap}
+#multiPickBtn.is-active,#multiPickBtn[aria-pressed="true"]{background:#dceaff;border-color:#6b9cdd;color:#175db0}
+#groupObjectsBtn,#ungroupObjectsBtn{background:#eaf3ff;border-color:#aac6ec;color:#2665a9}
+#snapGuides{accent-color:#2873cf}
+.paint-drop-ready::after{content:'Drop screenshot to annotate';position:absolute;inset:12px;border:2px dashed #2e7dd4;border-radius:12px;background:rgba(226,241,255,.78);pointer-events:none;z-index:14;display:grid;place-items:center;font-size:18px;font-weight:650;color:#1b5eab}
+@media(max-width:700px){
+ #noteMode{max-width:130px}
+ #multiPickBtn{min-height:32px;padding:0 9px}
+ #groupObjectsBtn,#ungroupObjectsBtn{min-height:32px}
+ .selection-shape-control{gap:6px}
+ #sketchCleanupWrap{font-size:11px}
+ #noteOptions .options-note{display:none}
+ .text-entry{max-width:calc(100vw - 28px)}
+}
