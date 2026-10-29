@@ -1453,7 +1453,8 @@ el.work.addEventListener('dragenter',imageDropEnter);
 el.work.addEventListener('dragover',e=>{if([...(e.dataTransfer?.types||[])].includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy';el.work.classList.add('paint-drop-ready')}});
 el.work.addEventListener('dragleave',e=>{if(!el.work.contains(e.relatedTarget))el.work.classList.remove('paint-drop-ready')});
 el.work.addEventListener('drop',async e=>{
- e.preventDefault();el.work.classList.remove('paint-drop-ready');
+ // Do not also trigger the document-level drop handler, which opens a new tab.
+ e.stopPropagation();e.preventDefault();el.work.classList.remove('paint-drop-ready');
  const file=[...(e.dataTransfer?.files||[])].find(f=>f.type.startsWith('image/'));
  if(!file){toast('Drop a PNG, JPG, GIF, or WebP screenshot to annotate it.');return}
  const rect=el.canvas.getBoundingClientRect();
