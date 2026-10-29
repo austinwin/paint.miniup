@@ -1637,7 +1637,16 @@ function pointerUp(e){
     const b=getBounds(o);return b.x<=area.x+area.w&&b.x+b.w>=area.x&&b.y<=area.y+area.h&&b.y+b.h>=area.y?[i]:[];
    });st.objectMarquee=null;selectObjects(indices);
   }else if(st.transform?.mode==='marquee'){const r=marqueeBounds();if(!r||r.w<4||r.h<4||(st.marquee?.kind==='lasso'&&st.marquee.points.length<3))st.marquee=null;else toast('Area selected. Drag to move or tap Delete.');updateContextOptions()}
-  else if(st.moving||st.duplicating){expandCanvasToObjects(st.transform.indices||selectedIndexes());snapshot()}
+  else if(st.moving||st.duplicating){
+   // Do not expand when editing callout anchors, resize handles or objects that
+   // were already outside the canvas. A genuine move from inside may expand it.
+   const originals=st.transform.originals,indices=st.transform.indices||selectedIndexes();
+   if(st.transform.mode==='move'&&originals?.[indices[0]]){
+    const b=unionBounds(indices,originals);
+    if(b&&b.x>=0&&b.y>=0&&b.x+b.w<=st.base.width&&b.y+b.h<=st.base.height)expandCanvasToObjects(indices);
+   }
+   snapshot();
+  }
   else if(st.transform?.mode==='move'&&st.objects[st.selected]?.type==='patch'){snapshot()}
   st.transform=null;st.duplicating=false;st.guides=[];updateSelectCursor(e);
  }
@@ -1809,6 +1818,8 @@ function changeCanvasGeometry(w,h,mode='canvas',anchor='center'){
 function expandCanvasToObjects(indices,padding=32){
  if(!st.base||!indices.length)return false;
  const bounds=unionBounds(indices);if(!bounds)return false;
+ // A nearby edge is not a crossing: only extend if artwork actually leaves the canvas.
+ if(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.w<=st.base.width&&bounds.y+bounds.h<=st.base.height)return false;
  const left=Math.max(0,Math.ceil(padding-bounds.x)),top=Math.max(0,Math.ceil(padding-bounds.y));
  const right=Math.max(0,Math.ceil(bounds.x+bounds.w+padding-st.base.width));
  const bottom=Math.max(0,Math.ceil(bounds.y+bounds.h+padding-st.base.height));
