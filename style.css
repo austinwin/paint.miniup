@@ -472,3 +472,17 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
 .layer-selection-actions button:hover:not(:disabled){background:#dcecff}
 .layer-selection-actions button:disabled{opacity:.43;cursor:default}
 @media(max-width:680px){.menupopup[data-name="Extras"]{max-height:calc(100vh - 65px)}.menurow{gap:1px}.menurow .menu{padding-left:5px;padding-right:5px;font-size:11px}}
+
+/* Idea Versions: one small, optional compare dialog. No new permanent toolbar. */
+.versions-dialog{width:min(840px,calc(100vw - 24px));max-height:min(85vh,760px);border:1px solid #aebed1;border-radius:11px;padding:20px;background:#fff;box-shadow:0 20px 80px #15263e55;color:#26384f}
+.versions-dialog::backdrop{background:#15243980}
+.versions-heading h2{font-size:19px;margin:0 0 5px}.versions-heading p{margin:0 0 16px;font-size:12px;color:#6c8097}
+.version-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;overflow-y:auto;max-height:55vh}
+.version-card{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:8px;border:1px solid #d3deeb;border-radius:8px;padding:9px;background:#f7faff}
+.version-card canvas{width:100%;max-width:200px;height:125px;object-fit:contain;align-self:center;background:#fff;border:1px solid #dfe7f1}
+.version-card strong{font-size:12px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.version-card button{background:#e4f0ff;border:1px solid #b0cbe8;border-radius:5px;color:#285f9f;padding:8px;cursor:pointer}
+.version-card button:disabled{opacity:.5;cursor:default}
+.versions-dialog .dialog-actions button{cursor:pointer}
+.menupopup[data-name="Extras"]{max-height:min(620px,calc(100vh - 24px))}
+@media(max-width:600px){.versions-dialog{padding:12px}.version-list{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}}

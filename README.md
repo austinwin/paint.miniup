@@ -74,3 +74,24 @@ The **Extras** menu groups useful optional actions; the regular drawing tools st
 **Export:** Export just the selected objects/area as a trimmed PNG or export visible annotations to a transparent PNG without the Background layer. The usual Export PNG still includes the visible background and all visible layers. Hidden layers and the on-screen grid are excluded.
 
 For advanced commands, use the Extras menu. Most users can ignore it until they need these operations. The layer panel can be opened from the toolbar or with Ctrl/⌘ + Shift + L.
+
+## Screenshot Pieces, Smart Connections, Idea Versions, and editable canvas resizing
+
+These tools are under **Extras** so the everyday drawing toolbar stays compact.
+
+### Screenshot Pieces
+Choose Select (V), use rectangular area selection, and drag around the part of the screenshot to change. Under **Extras → Screenshot Pieces**, choose:
+- **Copy selected region into movable piece:** Creates a new editable image patch on its own layer.
+- **Lift region + cover original:** Adds a moveable patch with an independently editable flat-color cover beneath it. The background color is sampled from the selected region and may need manual adjustment on complex screenshots.
+- **Replace region with editable text:** Places a covered rectangle and new editable text. Double-click the text to change it.
+
+The source screenshot remains untouched. These are manual, deterministic tools; they do not detect UI widgets or intelligently reconstruct hidden image content.
+
+### Smart Connections
+Shift-select an arrow/line/curve and one or two shapes, then choose **Extras → Smart Connections → Attach**. The endpoint follows the shape's current bounds as the shape moves or resizes. Shift-select a numbered callout and a shape to anchor the callout marker to the shape. Choose **Detach** to make the selected connection independent again. Dragging a connector endpoint or callout marker also detaches that endpoint. Connections are preserved in editable projects and Undo/Redo.
+
+### Idea Versions
+Choose **Extras → Idea Versions → Create new version**. Each version is a separate, editable tab with shared project lineage, not a raster copy. Rename a version, compare related versions in a dialog, or export all versions as one labeled PNG. When you save the browser project, all currently open related versions are stored under the same project record and reopened together. Unsaved versions are only in the current browser session, so save the project before closing.
+
+### Non-destructive canvas editing
+**Image → Canvas Size** now extends or trims the image while preserving vector objects, layers, and screenshot patches. **Image → Resize** scales the base image *and* editable geometry instead of flattening annotations. When dragging selected objects beyond the edge, the canvas automatically expands within the normal maximum size (12,000 pixels per side / 50 megapixels). Undo restores earlier canvas dimensions. Existing rotation/flip and explicit Flatten operations remain raster transformations.

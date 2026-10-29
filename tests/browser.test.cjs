@@ -336,7 +336,7 @@ async function main(){
 
   // Extras menu exposes advanced actions without enlarging the everyday toolbar.
   await page.locator('#menuExtras').click();
-  assert.equal(await page.locator('.menupopup:not([hidden]) .extras-heading').count(),4,'Extras commands are grouped');
+  assert.ok((await page.locator('.menupopup:not([hidden]) .extras-heading').count())>=4,'Extras commands are grouped');
   assert.ok(await page.locator('.menupopup:not([hidden])').getByText('Export annotations (transparent PNG)').isVisible(),'Transparent export is discoverable');
   await page.locator('#menuExtras').click();
 
@@ -383,6 +383,81 @@ async function main(){
    return{aligned,evenlySpaced,toggled,unchanged,transparent};
   });
   for(const [key,value] of Object.entries(arranged))assert.ok(value,'Extras arrangement/export behavior: '+key);
+
+
+  // Non-destructive canvas/image resize and edge expansion keep editability.
+  const geom=await page.evaluate(()=>{
+   const api=window.PaintDebug;api.createBlank();const st=api.state,old=st.base;
+   st.objects.push({type:'text',layerId:'sketch',x:45,y:40,text:'Editable',fontSize:18,color:'#111111'});
+   st.objects.push({type:'rect',layerId:'sketch',x1:100,y1:75,x2:180,y2:155,color:'#cc0000',width:2});
+   const resized=api.changeCanvasGeometry(640,360,'resize')&&st.base.width===640&&st.objects[0].fontSize===9&&st.objects[1].x1===50&&st.objects.length===2;
+   const canvasSize=api.changeCanvasGeometry(760,430,'canvas','center')&&st.objects[1].x1===110&&Math.abs(st.objects[1].y1-72.5)<.001;
+   st.objects[1].x2=800;const expanded=api.expandCanvasToObjects([1])&&st.base.width>=832&&st.objects.length===2;
+   return{resized,canvasSize,expanded,layer:st.layers[1].id,history:st.history.length};
+  });
+  assert.ok(geom.resized&&geom.canvasSize&&geom.expanded,'Canvas transforms preserve editability');
+  assert.equal(geom.layer,'sketch','Resize keeps original layers');
+
+  // Bind editable connectors to targets and follow movements automatically.
+  const linked=await page.evaluate(()=>{
+   const api=window.PaintDebug;api.createBlank();const st=api.state;
+   st.objects.push({type:'rect',layerId:'sketch',x1:30,y1:40,x2:110,y2:115,color:'#2288dd',width:2});
+   st.objects.push({type:'rect',layerId:'sketch',x1:340,y1:40,x2:440,y2:115,color:'#2288dd',width:2});
+   st.objects.push({type:'arrow',layerId:'sketch',x1:110,y1:77,x2:340,y2:77,color:'#222222',width:3});
+   api.setTool('select');api.selectObjects([0,1,2]);const success=api.attachSelection();
+   const before=st.objects[2].x1;st.objects[0].x1+=60;st.objects[0].x2+=60;api.composite();
+   const follows=st.objects[2].x1>before+40;
+   api.selectObjects([2]);const detached=api.detachSelection()&&!st.objects[2].startAttachment&&!st.objects[2].endAttachment;
+   return{success,follows,detached};
+  });
+  for(const [key,value] of Object.entries(linked))assert.ok(value,'Smart connections: '+key);
+
+  // A screenshot region can be lifted with a separate editable background cover.
+  const screenshot=await page.evaluate(()=>{
+   const api=window.PaintDebug;api.createBlank();const st=api.state;
+   st.marquee={kind:'rect',x1:30,y1:50,x2:180,y2:130};
+   const copied=api.screenshotPiece('cut');
+   const cover=st.objects.find(o=>o.type==='rect');
+   const patch=st.objects.find(o=>o.type==='patch');
+   const preserved=!!cover&&!!patch&&cover.layerId===patch.layerId&&st.layers.length===3;
+   st.marquee={kind:'rect',x1:20,y1:20,x2:100,y2:80};const replaced=api.screenshotPiece('replace');
+   const replacement=st.objects.at(-1);
+   return{copied,preserved,replaced,editableText:replacement.type==='text',selected:st.selected===st.objects.length-1};
+  });
+  for(const [key,value] of Object.entries(screenshot))assert.ok(value,'Screenshot Pieces: '+key);
+
+  // Idea Versions: independent editable alternatives, linked comparison, browser persistence.
+  const variants=await page.evaluate(()=>{
+   const api=window.PaintDebug;api.createBlank();const st=api.state;
+   st.objects.push({type:'rect',layerId:'sketch',x1:5,y1:5,x2:65,y2:65,color:'#111111',width:2});
+   const originalId=api.activeTabId;
+   const optionA=api.createIdeaVersion();
+   st.objects[0].color='#ee3344';
+   const optionB=api.createIdeaVersion();
+   st.objects[0].color='#3388ee';
+   const versions=api.relatedVersions(),different=versions.length===3&&versions.map(v=>v.data.objects[0].color).join(',')==='#111111,#ee3344,#3388ee';
+   const compare=api.versionComparisonCanvas();
+   api.compareIdeaVersions();
+   const cards=document.querySelectorAll('#ideaVersionList .version-card').length;
+   document.querySelector('#closeVersionsBtn').click();
+   return {optionA,optionB,different,cards,comparison:compare.width>1000&&compare.height>400,
+    originalId,versionLabels:versions.map(v=>v.data.versionLabel)};
+  });
+  assert.ok(variants.optionA&&variants.optionB&&variants.different&&variants.comparison,'Idea versions are independent and comparable');
+  assert.equal(variants.cards,3,'Comparison preview has all related versions');
+  assert.deepEqual(variants.versionLabels,['Original','Option A','Option B'],'Version names are related');
+  await page.evaluate(()=>document.querySelector('#saveBtn').click());
+  await page.locator('#projectSaveDialog').waitFor({state:'visible'});
+  await page.locator('#projectNameInput').fill('Comparison regression');
+  await page.locator('#confirmProjectSave').click();
+  await page.waitForFunction(()=>!!window.PaintDebug.state.savedId&&!window.PaintDebug.state.dirty);
+  const versionProject=await page.evaluate(()=>window.PaintDebug.state.savedId);
+  await page.evaluate(()=>{
+   const api=window.PaintDebug,id=api.state.savedId;
+   for(const tab of [...api.tabs].filter(t=>(t.id===api.activeTabId?api.state:t.document)?.savedId===id))api.closeTab(tab.id);
+  });
+  assert.ok(await page.evaluate(id=>window.PaintDebug.openProject(id),versionProject),'Reopen a versioned project from IndexedDB');
+  assert.equal(await page.evaluate(()=>window.PaintDebug.relatedVersions().length),3,'All idea variants persist in one browser project');
 
   // Share is handled by the browser when available, with a PNG File.
   await page.evaluate(()=>{
