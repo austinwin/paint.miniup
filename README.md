@@ -39,3 +39,24 @@ The app also supports touch drawing, pinch-to-zoom, and larger mobile transform 
 ### Security note
 
 Blur and pixelate are for visual annotation, not secure redaction. For sensitive information, use solid redaction and export a flattened PNG. Do not distribute an editable source project containing information that must remain hidden.
+
+## Lightweight layers
+
+Click **▤ Layers** in the toolbar (or **Windows → Layers**) to open a separate floating panel. It is hidden by default.
+
+- **Add / Add below:** Make a blank drawing layer above or below the selected layer.
+- **Rename:** Choose Rename or double-click a layer name.
+- **Show / Hide:** Toggle the eye indicator; hidden contents are excluded from PNG/JPG exports.
+- **Lock / Unlock:** Prevent drawing, selection or deletion on that layer. The initial Background layer is locked to protect imported images. Unlock it to edit its pixels.
+- **Move layers:** Drag layer rows or use ↑ Above / ↓ Below to change which content appears in front.
+- **Opacity:** Fade an entire layer without changing the colors of individual objects.
+- **Duplicate:** Create an editable copy of a drawing layer and its objects.
+- **Select all:** Select all objects on a visible, unlocked layer.
+- **Move selection to:** Send selected objects to any other editable layer.
+- **Solo / Show all:** Temporarily isolate the active layer without changing saved visibility settings.
+- **Clear / Delete:** Erase a layer's contents or delete the layer (with confirmation if it has contents). The Background layer is preserved.
+- **Merge down:** Combine two adjacent unlocked, visible layers at 100% opacity. Layers with erase operations are protected against unsafe merges; use Image → Flatten when necessary.
+
+Pasted screenshots become their own editable **Screenshot** layer beneath the current drawing layer. Adjust the image, then lock its layer to draw notes and arrows on top. The editor still works without opening the Layers panel: ordinary drawing goes to the active Sketch layer.
+
+**Layers are saved** in browser projects, along with visibility, lock state, order, opacity, and object assignments; Undo/Redo also restores layer changes. Export combines only visible layers. Destructive image transforms and Flatten create a new raster background from the visible result; use Undo to recover editable layers.

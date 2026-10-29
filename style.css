@@ -417,3 +417,46 @@ body.is-middle-panning,body.is-middle-panning *{cursor:grabbing!important;user-s
 .connector-caption{height:27px;min-width:100px;max-width:150px;width:120px;border:1px solid #b8c7d9;border-radius:5px;background:#fff;padding:3px 7px;font:inherit;color:#253950}
 .connector-caption:focus{outline:2px solid #72a7e2;outline-offset:0}
 @media(max-width:700px){.connector-caption{width:100px;max-width:110px;height:30px}#lineCaptionWrap{font-size:10px}}
+
+/* Lightweight layers: optional, hidden by default, native floating-panel styling. */
+#panelLayers{right:20px;top:95px;left:auto;width:292px;height:400px;min-width:242px;min-height:230px;max-height:calc(100% - 25px)}
+#panelLayers .float-body{min-height:0}
+.layers-body{display:flex;flex-direction:column;gap:9px;padding:10px;overflow:auto}
+.layer-topline{display:flex;gap:6px;align-items:center}
+.layer-topline button,.layer-actions button,.layer-move button{height:29px;background:#f7faff;border:1px solid #b9c9dd;border-radius:5px;padding:0 8px;color:#304762;font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+.layer-topline button:hover:not(:disabled),.layer-actions button:hover:not(:disabled),.layer-move button:hover:not(:disabled){background:#e2efff}
+.layer-topline button:disabled,.layer-actions button:disabled,.layer-move button:disabled{opacity:.42;cursor:default}
+.layer-topline #layerAdd{background:#e2efff;color:#1a62af;border-color:#9fc1ed}
+.layer-topline #layerSolo{margin-left:auto}
+#layerSolo[aria-pressed="true"]{background:#cde6ff;border-color:#357ddd;color:#175caa}
+.layer-list{flex:1;min-height:96px;max-height:250px;overflow:auto;background:#f4f7fc;border:1px solid #c9d4e4;border-radius:7px;padding:5px;display:flex;flex-direction:column;gap:4px}
+.layer-row{display:flex;align-items:center;gap:4px;border:1px solid transparent;border-radius:5px;padding:4px 5px;min-height:37px;background:#fff;cursor:pointer}
+.layer-row:hover{border-color:#bfd2ea}
+.layer-row.active{background:#deebfe;border-color:#77a6e8;box-shadow:inset 3px 0 #307dd4}
+.layer-row.locked .layer-name{color:#6d7b8e}
+.layer-icon{flex:none;width:26px;height:28px;display:grid;place-items:center;border:0;background:transparent;color:#576c86;border-radius:4px;cursor:pointer;font-size:15px;touch-action:manipulation}
+.layer-icon:hover{background:#e7effb}
+.layer-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent;border:0;text-align:left;color:#263950;font-size:12px;font-weight:600;cursor:pointer;padding:5px 2px}
+.layer-name:focus-visible,.layer-icon:focus-visible{outline:2px solid #377ed0;outline-offset:-2px}
+.layer-count{flex:none;border-radius:4px;background:#e8edf4;color:#61718a;padding:2px 4px;font-size:9px;font-weight:700}
+.layer-rename{flex:1;min-width:45px;border:1px solid #377fd6;border-radius:3px;background:white;padding:5px;font-size:12px}
+.layer-active{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;color:#64758d}
+#layersActiveName{font-weight:700;color:#304965;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer-active label{display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
+.layer-active input[type="range"]{width:77px;height:20px;accent-color:#2678d6}
+#layerOpacityValue{min-width:34px;font-size:10px}
+.layer-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.layer-actions button{padding:0 4px;font-size:10px}
+.layer-actions #layerDelete{color:#a7363b}
+.layer-move{display:flex;align-items:center;gap:6px}
+.layer-move label{font-size:10px;color:#64758d;white-space:nowrap}
+#layerMoveTarget{flex:1;min-width:35px;height:30px;border:1px solid #b9c9dd;background:white;border-radius:4px;color:#293e55;font-size:11px;padding:0 4px}
+.layer-help{font-size:10px;color:#70829a;line-height:1.35}
+@media(max-width:700px){
+ #panelLayers{right:7px;top:8px;width:min(288px,calc(100vw - 20px));height:min(370px,65vh);min-width:220px}
+ .layers-body{padding:7px;gap:7px}
+ .layer-row{min-height:41px}
+ .layer-icon{width:30px;height:33px}
+ .layer-actions button{height:34px}
+ #layersToggleBtn{padding:0 5px;min-width:56px;font-size:11px}
+}

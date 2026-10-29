@@ -276,6 +276,63 @@ async function main(){
   await page.waitForFunction(before=>window.PaintDebug.state.objects.length>before,beforeDrop);
   assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.at(-1).type),'patch','Dropped screenshot overlays the canvas');
 
+
+  // Layers: visibility, opacity, stacking, locking, move, duplicate, merge and solo.
+  const layerResult=await page.evaluate(()=>{
+   const dbg=window.PaintDebug;dbg.createBlank();
+   const st=dbg.state,initial=st.layers.map(l=>({id:l.id,locked:l.locked}));
+   const notes=dbg.addLayer('Notes');
+   st.objects.push({type:'rect',layerId:'sketch',x1:15,y1:15,x2:55,y2:55,fillMode:'filled',fill:true,color:'#ff0000',width:2});
+   st.objects.push({type:'rect',layerId:notes,x1:15,y1:15,x2:55,y2:55,fillMode:'filled',fill:true,color:'#0000ff',width:2});
+   dbg.setLayerValue(notes,'opacity',100);
+   const pixel=()=>[...dbg.composite().getContext('2d').getImageData(25,25,1,1).data];
+   const top=pixel();
+   dbg.setLayerValue(notes,'visible',false);const hidden=pixel();
+   dbg.setLayerValue(notes,'visible',true);
+   dbg.reorderLayer(notes,-1);const beneath=pixel();
+   dbg.reorderLayer(notes,1);
+   dbg.setLayerValue(notes,'opacity',50);const faded=pixel();
+   dbg.setLayerValue(notes,'opacity',100);
+   const blue=st.objects.findIndex(o=>o.color==='#0000ff');
+   dbg.setLayerValue(notes,'locked',true);dbg.selectObjects([blue]);const blocked=st.selected===-1;
+   dbg.setLayerValue(notes,'locked',false);dbg.selectObjects([blue]);const selectable=st.selected===blue;
+   const moved=dbg.moveSelectionToLayer('sketch')&&st.objects[blue].layerId==='sketch';
+   const duplicate=dbg.duplicateLayer('sketch');
+   const copied=st.objects.filter(o=>o.layerId===duplicate).length===2;
+   const merged=dbg.mergeLayerDown(duplicate)&&!st.layers.some(l=>l.id===duplicate)&&st.objects.filter(o=>o.layerId==='sketch').length===4;
+   dbg.soloLayer('sketch');
+   const isolated=dbg.composite().getContext('2d').getImageData(500,500,1,1).data[3]===0;
+   dbg.soloLayer('sketch');
+   dbg.setLayerValue('sketch','name','Wireframes');
+   return{initial,notes,top,hidden,beneath,faded,blocked,selectable,moved,copied,merged,isolated,renamed:st.layers.find(l=>l.id==='sketch').name,historyIdx:st.historyIdx,panelHidden:document.querySelector('#panelLayers').classList.contains('hidden')};
+  });
+  assert.deepEqual(layerResult.initial,[{id:'background',locked:true},{id:'sketch',locked:false}],'Default sketch + locked background layers');
+  assert.ok(layerResult.panelHidden,'Layers panel starts collapsed');
+  assert.ok(layerResult.top[2]>220&&layerResult.top[0]<30,'Top layer determines composite color');
+  assert.ok(layerResult.hidden[0]>220&&layerResult.hidden[2]<30,'Hidden layer absent from render');
+  assert.ok(layerResult.beneath[0]>220&&layerResult.beneath[2]<30,'Layer reorder changes stacking');
+  assert.ok(layerResult.faded[0]>60&&layerResult.faded[2]>60,'Group opacity renders through the compositor');
+  assert.ok(layerResult.blocked&&layerResult.selectable,'Locked layers cannot be selected');
+  assert.ok(layerResult.moved&&layerResult.copied&&layerResult.merged,'Move selection, duplicate and merge layers');
+  assert.ok(layerResult.isolated,'Solo isolates layer contents without the background');
+  assert.equal(layerResult.renamed,'Wireframes','Layer can be renamed');
+  await page.evaluate(()=>{document.activeElement?.blur();document.dispatchEvent(new KeyboardEvent('keydown',{key:'z',ctrlKey:true,bubbles:true,cancelable:true}))});
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.layers.find(l=>l.id==='sketch').name),'Sketch','Undo restores layer metadata');
+  await page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'y',ctrlKey:true,bubbles:true,cancelable:true})));
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.layers.find(l=>l.id==='sketch').name),'Wireframes','Redo restores layer metadata');
+
+  // Editable projects retain layer metadata when reopened from IndexedDB.
+  await page.evaluate(()=>document.querySelector('#saveBtn').click());
+  await page.locator('#projectSaveDialog').waitFor({state:'visible'});
+  await page.locator('#projectNameInput').fill('Layer persistence regression');
+  await page.locator('#confirmProjectSave').click();
+  await page.waitForFunction(()=>!!window.PaintDebug.state.savedId&&!window.PaintDebug.state.dirty);
+  const stored=await page.evaluate(()=>window.PaintDebug.state.savedId);
+  await page.evaluate(()=>window.PaintDebug.createBlank());
+  assert.ok(await page.evaluate(id=>window.PaintDebug.openProject(id),stored),'Saved layered image reopens');
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.layers.find(l=>l.id==='sketch')?.name),'Wireframes','Layers preserved in saved projects');
+  assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.filter(o=>o.layerId==='sketch').length),4,'Layer object assignments preserved');
+
   // Share is handled by the browser when available, with a PNG File.
   await page.evaluate(()=>{
    navigator.canShare=()=>true;
