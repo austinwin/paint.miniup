@@ -78,7 +78,7 @@ async function main(){
    c.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0,buttons:1,pointerId:12,pointerType:'mouse',clientX:r.left+70*z,clientY:r.top+48*z}));
   });
   await textField.fill('Finish by outside click');
-  await page.locator('#docTitle').click();
+  await page.evaluate(()=>document.querySelector('#docTitle').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0,buttons:1,pointerId:22,pointerType:'mouse'})));
   assert.equal(await page.evaluate(()=>window.PaintDebug.state.objects.filter(x=>x.type==='text').length),countText+1,'Clicking outside commits text');
   assert.equal(await page.evaluate(()=>document.querySelector('#textMoveHandle').hidden),true,'Move handle hides after committing');
 
