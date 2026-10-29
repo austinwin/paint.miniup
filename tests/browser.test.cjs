@@ -235,6 +235,18 @@ async function main(){
   assert.equal(notes[1].style,'sticky','Sticky created');
   assert.equal(notes[1].number,2,'Note numbering increments');
 
+  // A numbered callout's marker can be retargeted without moving its text.
+  const retargeted=await page.evaluate(()=>{
+   const dbg=window.PaintDebug,st=dbg.state,i=st.objects.findIndex(o=>o.noteStyle==='callout');
+   dbg.setTool('select');dbg.selectObjects([i]);
+   const note=st.objects[i],beforeX=note.x,anchor={...note.noteAnchor};
+   const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=st.zoom;
+   const emit=(type,x,y)=>c.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,button:0,buttons:type==='pointerup'?0:1,pointerId:88,pointerType:'mouse',clientX:r.left+x*z,clientY:r.top+y*z}));
+   emit('pointerdown',anchor.x,anchor.y);emit('pointermove',anchor.x+12,anchor.y+7);emit('pointerup',anchor.x+12,anchor.y+7);
+   return{xUnchanged:st.objects[i].x===beforeX,anchorMoved:st.objects[i].noteAnchor.x===anchor.x+12&&st.objects[i].noteAnchor.y===anchor.y+7};
+  });
+  assert.ok(retargeted.xUnchanged&&retargeted.anchorMoved,'Move callout target independently of text');
+
   // Multi-select, group, nudge, duplicate and ungroup must operate on all selected objects.
   const multi=await page.evaluate(()=>{
    const dbg=window.PaintDebug,st=dbg.state,ids=st.objects.flatMap((o,i)=>o.noteStyle?[i]:[]);

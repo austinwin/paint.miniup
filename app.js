@@ -217,6 +217,7 @@ function handleLocations(o){
  [['nw',b.x,b.y],['n',midX,b.y],['ne',b.x+b.w,b.y],['e',b.x+b.w,midY],['se',b.x+b.w,b.y+b.h],['s',midX,b.y+b.h],['sw',b.x,b.y+b.h],['w',b.x,midY],['rotate',midX,b.y-30/st.zoom]];
  if(o.type==='curve'){if(o.controls?.length)o.controls.forEach((p,i)=>raw.push(['control-'+i,p.x,p.y]));else if(o.control)raw.push(['control',o.control.x,o.control.y])}
  if(o.type==='polygon'&&o.points?.length<240)o.points.forEach((p,i)=>raw.push(['vertex-'+i,p.x,p.y]));
+ if(o.noteStyle==='callout'&&o.noteAnchor)raw.push(['note-anchor',o.noteAnchor.x,o.noteAnchor.y]);
  return raw.map(([kind,x,y])=>({kind,...spin({x,y},c,ang)}));
 }
 
@@ -242,7 +243,8 @@ function multiHandles(){const b=unionBounds(selectedIndexes());if(!b)return[];
 }
 function duplicateObjects(){
  const ids=selectedIndexes();if(!ids.length)return;
- const additions=ids.map(i=>{const o=copyObj(st.objects[i]);moveObject(o,20,20);if(o.groupId)o.groupId='group-'+Date.now();return o});
+ const group='group-'+Date.now(),startNumber=Math.max(0,...st.objects.filter(o=>o.noteStyle).map(o=>o.noteNumber||0));let nextNumber=startNumber;
+ const additions=ids.map(i=>{const o=copyObj(st.objects[i]);moveObject(o,20,20);if(o.groupId)o.groupId=group;if(o.noteStyle)o.noteNumber=++nextNumber;return o});
  const start=st.objects.length;st.objects.push(...additions);selectObjects(additions.map((_,i)=>start+i));
  snapshot();paint();toast(additions.length+' object'+(additions.length>1?'s':'')+' duplicated');
 }
@@ -750,7 +752,7 @@ function renderSelection(){
   multiHandles().forEach(h=>{ctx.fillStyle='#fff';ctx.fillRect(h.x-5/st.zoom,h.y-5/st.zoom,10/st.zoom,10/st.zoom);ctx.strokeRect(h.x-5/st.zoom,h.y-5/st.zoom,10/st.zoom,10/st.zoom)});
   ctx.restore();return;
  }
- if(st.selected<0||!st.objects[st.selected])return;const o=st.objects[st.selected],b=getBounds(o),c=objectCenter(o),a=o.rotation||0;ctx.save();ctx.translate(c.x,c.y);ctx.rotate(a);ctx.translate(-c.x,-c.y);ctx.strokeStyle='#2375dc';ctx.lineWidth=1.25/st.zoom;ctx.setLineDash([5/st.zoom,4/st.zoom]);ctx.strokeRect(b.x-3/st.zoom,b.y-3/st.zoom,b.w+6/st.zoom,b.h+6/st.zoom);ctx.setLineDash([]);ctx.restore();const hs=handleLocations(o);ctx.save();hs.forEach(v=>{let sz=7/st.zoom;ctx.fillStyle=v.kind==='rotate'?'#0c9d85':v.kind==='control'?'#9457d7':v.kind.startsWith('endpoint')?'#e9f2ff':'#ffffff';ctx.strokeStyle=v.kind==='control'?'#7036ad':'#2375dc';ctx.lineWidth=1.5/st.zoom;if(v.kind==='rotate'||v.kind==='control'||v.kind.startsWith('control-')||v.kind.startsWith('vertex-')||v.kind.startsWith('endpoint')){ctx.beginPath();ctx.arc(v.x,v.y,5.5/st.zoom,0,Math.PI*2);ctx.fill();ctx.stroke()}else{ctx.fillRect(v.x-sz/2,v.y-sz/2,sz,sz);ctx.strokeRect(v.x-sz/2,v.y-sz/2,sz,sz)}});ctx.restore()}
+ if(st.selected<0||!st.objects[st.selected])return;const o=st.objects[st.selected],b=getBounds(o),c=objectCenter(o),a=o.rotation||0;ctx.save();ctx.translate(c.x,c.y);ctx.rotate(a);ctx.translate(-c.x,-c.y);ctx.strokeStyle='#2375dc';ctx.lineWidth=1.25/st.zoom;ctx.setLineDash([5/st.zoom,4/st.zoom]);ctx.strokeRect(b.x-3/st.zoom,b.y-3/st.zoom,b.w+6/st.zoom,b.h+6/st.zoom);ctx.setLineDash([]);ctx.restore();const hs=handleLocations(o);ctx.save();hs.forEach(v=>{let sz=7/st.zoom;ctx.fillStyle=v.kind==='rotate'?'#0c9d85':v.kind==='note-anchor'?'#f0ba4f':v.kind==='control'?'#9457d7':v.kind.startsWith('endpoint')?'#e9f2ff':'#ffffff';ctx.strokeStyle=v.kind==='note-anchor'?'#a06c1e':v.kind==='control'?'#7036ad':'#2375dc';ctx.lineWidth=1.5/st.zoom;if(v.kind==='rotate'||v.kind==='note-anchor'||v.kind==='control'||v.kind.startsWith('control-')||v.kind.startsWith('vertex-')||v.kind.startsWith('endpoint')){ctx.beginPath();ctx.arc(v.x,v.y,5.5/st.zoom,0,Math.PI*2);ctx.fill();ctx.stroke()}else{ctx.fillRect(v.x-sz/2,v.y-sz/2,sz,sz);ctx.strokeRect(v.x-sz/2,v.y-sz/2,sz,sz)}});ctx.restore()}
 
 function marqueeBounds(){
  const m=st.marquee;if(!m||!st.base)return null;
@@ -1066,7 +1068,7 @@ function updateDraft(p,shift){if(!st.draft)return;if(st.draft.points){st.draft.p
 const rotateCursor='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M22 13a9 9 0 1 0-3 7" fill="none" stroke="#143c72" stroke-width="2.8" stroke-linecap="round"/><path d="m18 6 5 7 3-7" fill="#fff" stroke="#143c72" stroke-width="2" stroke-linejoin="round"/></svg>')+'") 14 14, crosshair';
 function cursorForHandle(handle,object){
  if(handle==='rotate')return rotateCursor;
- if(handle==='control'||handle.startsWith('control-')||handle.startsWith('vertex-'))return 'move';if(handle==='endpoint-start'||handle==='endpoint-end')return 'crosshair';
+ if(handle==='note-anchor'||handle==='control'||handle.startsWith('control-')||handle.startsWith('vertex-'))return 'move';if(handle==='endpoint-start'||handle==='endpoint-end')return 'crosshair';
  const angles={e:0,ne:-45,n:-90,nw:-135,w:180,sw:135,s:90,se:45};
  const deg=(angles[handle]+(object?.rotation||0)*180/Math.PI+1800)%180;
  return ['ew-resize','nwse-resize','ns-resize','nesw-resize'][Math.round(deg/45)%4];
@@ -1267,6 +1269,10 @@ function pointerMove(e){
    const idx=Number(tr.mode.slice(7)),prev=unspin(p,tr.original),orig=unspin(tr.origin,tr.original);
    o.points[idx]={x:tr.original.points[idx].x+prev.x-orig.x,y:tr.original.points[idx].y+prev.y-orig.y};st.moving=true;
   }
+  else if(tr.mode==='note-anchor'&&o.type==='text'&&o.noteAnchor){
+   const next=unspin(p,tr.original),origin=unspin(tr.origin,tr.original);
+   o.noteAnchor={x:tr.original.noteAnchor.x+next.x-origin.x,y:tr.original.noteAnchor.y+next.y-origin.y};st.moving=true;
+  }
   else if(tr.mode==='endpoint-start'||tr.mode==='endpoint-end'){
    const q=unspin(p,tr.original),start=tr.mode==='endpoint-start';
    const anchor=start?{x:tr.original.x2,y:tr.original.y2}:{x:tr.original.x1,y:tr.original.y1};
@@ -1437,7 +1443,7 @@ async function pasteButton(){try{if(!navigator.clipboard?.read)throw new Error('
 async function pasteSelection(){
  if(internalEditableObject&&st.base){
   const clones=(Array.isArray(internalEditableObject)?internalEditableObject:[internalEditableObject]).map(o=>{const clone=copyObj(o);moveObject(clone,20,20);return clone});
-  const group='group-'+Date.now();clones.forEach(o=>{if(o.groupId)o.groupId=group});
+  const group='group-'+Date.now();let next=Math.max(0,...st.objects.filter(o=>o.noteStyle).map(o=>o.noteNumber||0));clones.forEach(o=>{if(o.groupId)o.groupId=group;if(o.noteStyle)o.noteNumber=++next});
   setTool('select');const start=st.objects.length;st.objects.push(...clones);
   st.multiSelection=clones.map((_,i)=>start+i);st.selected=start+clones.length-1;
   snapshot();updateContextOptions();paint();toast('Pasted '+clones.length+' editable object'+(clones.length>1?'s':'')+'.');return;
