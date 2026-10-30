@@ -16,6 +16,48 @@ async function main(){
   await page.goto(base,{waitUntil:'load'});
   await page.waitForFunction(()=>window.PaintDebug?.state?.base?.width===1280);
   assert.equal(await page.evaluate(()=>window.PaintDebug.tabs.length),1,'A blank canvas should boot');
+  // Shapes: tool click uses remembered preset and never opens the shape gallery.
+  const defaultShape=await page.evaluate(()=>{
+   const st=window.PaintDebug.state;
+   const button=document.querySelector('.toolbutton[data-tool="shape"]'),gallery=document.querySelector('#shapeGallery');
+   button.click();
+   const before={tool:st.tool,kind:st.shapeKind,closed:gallery.hidden};
+   const c=document.querySelector('#canvas'),r=c.getBoundingClientRect(),z=st.zoom;
+   const fire=(type,x,y)=>c.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,button:0,buttons:type==='pointerup'?0:1,
+    pointerId:301,pointerType:'mouse',clientX:r.left+x*z,clientY:r.top+y*z}));
+   fire('pointerdown',36,36);fire('pointermove',120,90);fire('pointerup',120,90);
+   return {...before,drawn:st.objects.at(-1)?.shapeKind,stillClosed:gallery.hidden};
+  });
+  assert.deepEqual(defaultShape,{tool:'shape',kind:'rectangle',closed:true,drawn:'rectangle',stillClosed:true},
+   'Shapes defaults to Rectangle and draws immediately without opening gallery');
+
+  await page.evaluate(()=>document.querySelector('#shapePickerTrigger').click());
+  assert.equal(await page.locator('#shapeGallery').isVisible(),true,'Only explicit picker click opens gallery');
+  await page.evaluate(()=>document.querySelector('.shape-gallery-option[data-kind="pentagon"]').click());
+  const pickedShape=await page.evaluate(()=>{
+   const st=window.PaintDebug.state;
+   document.querySelector('.toolbutton[data-tool="pen"]').click();
+   const closedAfterSwitch=document.querySelector('#shapeGallery').hidden;
+   document.querySelector('.toolbutton[data-tool="shape"]').click();
+   return{kind:st.shapeKind,choice:document.querySelector('#shapeType').value,
+    label:document.querySelector('#selectedShapeName').textContent,closedAfterSwitch,
+    closedOnReopen:document.querySelector('#shapeGallery').hidden};
+  });
+  assert.deepEqual(pickedShape,{kind:'pentagon',choice:'pentagon',label:'Pentagon',
+   closedAfterSwitch:true,closedOnReopen:true},
+   'Shapes returns to the last explicitly selected preset without gallery popping up');
+
+  await page.reload({waitUntil:'load'});
+  await page.waitForFunction(()=>window.PaintDebug?.state?.base?.width===1280);
+  const persistedShape=await page.evaluate(()=>{
+   document.querySelector('.toolbutton[data-tool="shape"]').click();
+   return{kind:window.PaintDebug.state.shapeKind,
+    closed:document.querySelector('#shapeGallery').hidden,
+    stored:localStorage.getItem('paint-last-shape-v1')};
+  });
+  assert.deepEqual(persistedShape,{kind:'pentagon',closed:true,stored:'pentagon'},
+   'Shape preset survives page reload while gallery remains closed');
+
   await page.locator('#newTabBtn').click();
   assert.equal(await page.evaluate(()=>window.PaintDebug.tabs.length),2,'New Image adds a tab');
 

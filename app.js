@@ -476,7 +476,7 @@ function updateTextOptions(){
  const editing=el.text.style.display==='block';
  $('#finishTextBtn').hidden=!editing;$('#cancelTextBtn').hidden=!editing;
 }
-function setTool(t){finishText(true);if(!names[t])return;if(st.polygonDraft)finishPolygon();if(st.polylineDraft)finishPolyline();st.freeformTracing=false;st.tool=t;if(t==='pen')st.width=st.brushSize;else if(t==='pencil')st.width=1;else if(t!=='select')st.width=st.nonBrushWidth;$('#topWidth').value=st.width;$('#topWidthValue').value=st.width;$('#inspectorWidth').value=Math.min(40,st.width);$('#widthBadge').textContent=st.width+' px';if(t==='erase'&&st.width<10&&!st.hasSetEraserWidth){st.width=20;st.hasSetEraserWidth=true;$('#topWidth').value=20;$('#topWidthValue').value=20;$('#inspectorWidth').value=20;$('#widthBadge').textContent='20 px'}st.selected=-1;st.multiSelection=[];st.guides=[];st.crop=null;st.draft=null;st.transform=null;st.polygonDraft=null;st.polylineDraft=null;$$('.toolbutton').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('#activeToolIcon').setAttribute('href','#i-'+icons[t]);$('#activeToolLabel').textContent=names[t];$('#activeToolTrigger').setAttribute('aria-label',names[t]+' — Open Tools window');$('#toolHint').textContent=hints[t];$('#selectedToolText').textContent=names[t];$('#toolDescription').textContent=hints[t];el.canvas.style.cursor=t==='select'?'crosshair':t==='erase'?'crosshair':t==='pan'?'grab':t==='zoom'?'zoom-in':'crosshair';updateContextOptions();updateUI();paint()}
+function setTool(t){finishText(true);if(!names[t])return;window.__paintShapePickerClose?.();if(st.polygonDraft)finishPolygon();if(st.polylineDraft)finishPolyline();st.freeformTracing=false;st.tool=t;if(t==='pen')st.width=st.brushSize;else if(t==='pencil')st.width=1;else if(t!=='select')st.width=st.nonBrushWidth;$('#topWidth').value=st.width;$('#topWidthValue').value=st.width;$('#inspectorWidth').value=Math.min(40,st.width);$('#widthBadge').textContent=st.width+' px';if(t==='erase'&&st.width<10&&!st.hasSetEraserWidth){st.width=20;st.hasSetEraserWidth=true;$('#topWidth').value=20;$('#topWidthValue').value=20;$('#inspectorWidth').value=20;$('#widthBadge').textContent='20 px'}st.selected=-1;st.multiSelection=[];st.guides=[];st.crop=null;st.draft=null;st.transform=null;st.polygonDraft=null;st.polylineDraft=null;$$('.toolbutton').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('#activeToolIcon').setAttribute('href','#i-'+icons[t]);$('#activeToolLabel').textContent=names[t];$('#activeToolTrigger').setAttribute('aria-label',names[t]+' — Open Tools window');$('#toolHint').textContent=hints[t];$('#selectedToolText').textContent=names[t];$('#toolDescription').textContent=hints[t];el.canvas.style.cursor=t==='select'?'crosshair':t==='erase'?'crosshair':t==='pan'?'grab':t==='zoom'?'zoom-in':'crosshair';updateContextOptions();updateUI();paint()}
 function setColor(color){st.color=color;$('#topColor').value=color;if(el.text.style.display==='block')el.text.style.color=color;if($('#hexInput'))syncColorWheel(color);$$('.swatch').forEach(x=>x.classList.toggle('selected',x.dataset.color.toLowerCase()===color.toLowerCase()));if(st.selected>=0&&st.objects[st.selected]){st.objects[st.selected].color=color;snapshot();paint()}}
 function setWidth(value){if(st.tool==='pencil')return;st.width=Math.max(1,Math.min(48,Number(value)||1));if(st.tool==='pen')st.brushSize=st.width;else st.nonBrushWidth=st.width;$('#topWidth').value=st.width;$('#topWidthValue').value=st.width;$('#inspectorWidth').value=Math.min(40,st.width);$('#widthBadge').textContent=st.width+' px';if(st.selected>=0&&st.objects[st.selected]){st.objects[st.selected].width=st.width;snapshot();paint()}}
 function initiate(c,name,dirty=false){
@@ -1946,7 +1946,7 @@ function keyHandler(e){const tag=document.activeElement?.tagName,editing=el.text
  if(st.tool==='shape'&&!cmd&&e.key.toLowerCase()==='a'){
   e.preventDefault();const kinds=shapeCatalog.flatMap(group=>group[1].map(x=>x[0])),i=kinds.indexOf(st.shapeKind);
   st.shapeKind=kinds[(i+(e.shiftKey?-1:1)+kinds.length)%kinds.length];
-  $('#shapeType').value=st.shapeKind;updateContextOptions();window.__paintShapePickerSync?.();return;
+  $('#shapeType').value=st.shapeKind;rememberShapePreset(st.shapeKind);updateContextOptions();window.__paintShapePickerSync?.();return;
  }if(e.key==='Escape'){if(st.polygonDraft){e.preventDefault();st.polygonDraft=null;st.draft=null;st.freeformTracing=false;updateContextOptions();paint();return}if(['shape','curve'].includes(st.tool)&&st.selected>=0){e.preventDefault();finishShapeEdit();return}if(!popup.hidden){e.preventDefault();closeMenu();return}st.crop=null;st.draft=null;st.polygonDraft=null;st.polylineDraft=null;st.selected=-1;st.wand=null;st.marquee=null;updateContextOptions();paint();return}const tool={v:'select',w:'wand',f:'bucket',k:'picker',z:'zoom',u:'curve',n:'pencil',p:'pen',h:'pan',a:'arrow',l:'line',r:'rect',o:'ellipse',t:'text',j:'note',b:'redact',c:'crop',e:'erase',s:'shape'}[e.key.toLowerCase()];if(tool){e.preventDefault();setTool(tool)}}
 // Contextual tool options. These are visible only when relevant.
 ['startHead','endHead'].forEach(id=>$('#'+id).addEventListener('change',e=>{if(st.headSettings[st.tool])st.headSettings[st.tool][id==='startHead'?'start':'end']=e.target.value;const o=st.objects[st.selected];if(o&&['line','arrow','curve'].includes(o.type)){o[id]=e.target.value;snapshot();paint()}}));
@@ -2292,7 +2292,8 @@ $('#fillShape').onchange=e=>{
  updateContextOptions();
 };
 $('#shapeFillColor').onchange=e=>{st.secondaryColor=e.target.value;const o=st.objects[st.selected];if(o&&['shape','polygon'].includes(o.type)){o.fillColor=st.secondaryColor;snapshot();paint()}};
-$('#shapeType').onchange=e=>{const kind=e.target.value,selected=st.objects[st.selected];if(st.polygonDraft)finishPolygon();st.shapeKind=kind;if(selected?.type==='shape'&&!['custom','customSmooth'].includes(kind)){selected.shapeKind=kind;snapshot();paint()}updateContextOptions()};
+function rememberShapePreset(kind){try{localStorage.setItem('paint-last-shape-v1',kind)}catch(_){}}
+$('#shapeType').onchange=e=>{const kind=e.target.value,selected=st.objects[st.selected];if(st.polygonDraft)finishPolygon();st.shapeKind=kind;rememberShapePreset(kind);if(selected?.type==='shape'&&!['custom','customSmooth'].includes(kind)){selected.shapeKind=kind;snapshot();paint()}updateContextOptions()};
 $('#imageSizeApply').onclick=applySizeDialog;$('#imageSizeCancel').onclick=()=>$('#imageSizeDialog').close();
 $('#keepRatio').onchange=()=>{};$('#imageSizeWidth').oninput=()=>{if($('#imageSizeDialog').dataset.mode==='resize'&&$('#keepRatio').checked)$('#imageSizeHeight').value=Math.max(1,Math.round(Number($('#imageSizeWidth').value)*st.base.height/st.base.width))};$('#imageSizeHeight').oninput=()=>{if($('#imageSizeDialog').dataset.mode==='resize'&&$('#keepRatio').checked)$('#imageSizeWidth').value=Math.max(1,Math.round(Number($('#imageSizeHeight').value)*st.base.width/st.base.height))};
 $$('.toolbutton').forEach(b=>b.addEventListener('click',()=>{$('#selectedToolText').textContent=names[b.dataset.tool];$('#toolDescription').textContent=hints[b.dataset.tool]}));
@@ -2303,6 +2304,13 @@ function installShapeGallery(){
  const trigger=document.querySelector('#shapePickerTrigger');
  const sections=document.querySelector('#shapeGallerySections');
  const select=document.querySelector('#shapeType');
+ // Shapes defaults to Rectangle until the user explicitly picks a different preset.
+ try{
+  const saved=localStorage.getItem('paint-last-shape-v1');
+  if(saved&&shapeCatalog.some(([,entries])=>entries.some(([kind])=>kind===saved))){
+   st.shapeKind=saved;select.value=saved;
+  }
+ }catch(_){}
  const imageCache=new Map();
  let activeButton=null;
  function icon(kind){
@@ -2332,6 +2340,7 @@ function installShapeGallery(){
   section.appendChild(group);sections.appendChild(section);
  }
  function close(){sheet.hidden=true;trigger.setAttribute('aria-expanded','false')}
+ window.__paintShapePickerClose=close;
  function place(){
   const rect=trigger.getBoundingClientRect();
   if(window.innerWidth<=680){
@@ -2368,9 +2377,7 @@ function installShapeGallery(){
  }
  window.__paintShapePickerSync=syncShapePicker;
  syncShapePicker();
- // The first Shapes click reveals the visual choices, rather than another dense toolbar.
- const toolButton=document.querySelector('.toolbutton[data-tool="shape"]');
- if(toolButton)toolButton.addEventListener('click',()=>{if(sheet.hidden)open()});
+ // Select Shapes to draw immediately. Only the shape-picker trigger opens the gallery.
 }
 installShapeGallery();
 

@@ -5,7 +5,7 @@ A simple Paint-style workspace for rough sketches, screenshots, visual notes, an
 ## Quick start
 
 - **Sketch:** Choose Paintbrush or Pencil. Enable **Tidy rough shapes** when you want approximate straight lines, rectangles, and circles cleaned up after a stroke. Leave it off for freehand doodling.
-- **Shapes:** Draw rectangles, ellipses, polygons, smooth closed outlines, arrows, lines, and Bézier/spline curves. Use **Finish** or Enter to commit a shape.
+- **Shapes:** Click **Shapes** to draw immediately with the last selected preset (Rectangle initially). The shape gallery stays closed until you explicitly click the shape-choice button in the options bar. The last preset is remembered across reloads. Draw rectangles, ellipses, polygons, smooth closed outlines, arrows, lines, and Bézier/spline curves. Use **Finish** or Enter to commit a shape.
 - **Notes:** Choose **Notes** (J), then **Numbered callout** or **Sticky note**. Click the canvas to place one, type multiple lines, and click outside or choose Finish. Use Select, then double-click a note to edit it. Drag a selected callout's yellow target handle to move just its pointer.
 - **Flow labels:** Select Line, Arrow, or Curve and enter a short **Label** in the toolbar. The label stays with the line when moved, copied, exported, or saved.
 - **Screenshots:** Open an image in its own tab, paste with Ctrl/⌘+V as a movable overlay, or drag an image directly onto the canvas. Drop a file outside the canvas to open it as an image.
